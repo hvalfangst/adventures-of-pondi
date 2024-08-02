@@ -1,18 +1,19 @@
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use minifb::{Key as key, Key, Window, WindowOptions};
+use minifb::{Key, Window, WindowOptions};
 use winit::event_loop::EventLoop;
 use winit::monitor::MonitorHandle;
+
 use crate::{
     graphics::constants::*,
     graphics::sprites::*,
     state::{FRAME_DURATION, Player},
 };
-use crate::state::Obstacle;
-use crate::state::utils::{draw_buffer, GameState, handle_key_presses, update_buffer_with_state};
+use crate::state::{BACKGROUND_CHANGE_INTERVAL, Obstacle};
+use crate::state::utils::{handle_key_presses, update_buffer_with_state};
 
-pub fn start_event_loop(player: &mut Player, sprites: &Sprites, game_state: &mut Vec<Vec<GameState>>, obs: &Vec<Obstacle>) {
+pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstacle>) {
     // Create an event loop
     let event_loop = EventLoop::new();
 
@@ -36,6 +37,10 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, game_state: &mut
     let mut window_buffer = vec![0; WINDOW_WIDTH * WINDOW_HEIGHT];
     let mut scaled_buffer = vec![0; (screen_width * screen_height)];
 
+    // Variables for background sprite changing
+    let mut background_sprite_index = 0;
+    let mut last_background_change = Instant::now();
+
     // Main event loop: runs as long as the window is open and the Escape key is not pressed
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let start = Instant::now(); // Record start time for frame timing
@@ -43,8 +48,14 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, game_state: &mut
         // Handle user key presses to update state
         handle_key_presses(player, &mut window,  obs);
 
+        // Check if it's time to change the background sprite
+        if last_background_change.elapsed() >= BACKGROUND_CHANGE_INTERVAL {
+            background_sprite_index = (background_sprite_index + 1) % 4; // Cycle between 0 and 3
+            last_background_change = Instant::now(); // Reset the timer
+        }
+
         // Update the pixel buffer with the current state visuals
-        update_buffer_with_state(player, sprites, &mut window_buffer, game_state);
+        update_buffer_with_state(player, sprites, &mut window_buffer, background_sprite_index);
 
         // Scale the buffer to the screen resolution
         scale_buffer(&window_buffer, &mut scaled_buffer, WINDOW_WIDTH, WINDOW_HEIGHT, screen_width, screen_height);

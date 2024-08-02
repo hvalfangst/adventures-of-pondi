@@ -1,12 +1,8 @@
-use std::fs::File;
-use std::io;
-use std::io::BufRead;
-
 use minifb::{Key, KeyRepeat, Window};
 
 use crate::graphics::constants::*;
 use crate::graphics::sprites::{draw_sprite, Sprites};
-use crate::state::{Obstacle, Player};
+use crate::state::{*, Obstacle, Player};
 
 fn safe_get_char(game_state: &Vec<Vec<GameState>>, row: isize, col: isize) -> Option<char> {
     if row >= 0 && row < game_state.len() as isize {
@@ -18,9 +14,78 @@ fn safe_get_char(game_state: &Vec<Vec<GameState>>, row: isize, col: isize) -> Op
 }
 
 pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &Vec<Obstacle>) {
+
     // Apply gravity if player is not on ground
     if !player.on_ground {
-        player.vy += 0.5; // Gravity constant
+        player.vy += GRAVITY;
+    }
+
+    // Handle jump iff player is on the ground
+    if window.is_key_pressed(Key::Space, KeyRepeat::No) && player.on_ground {
+        player.vy = JUMP_VELOCITY;
+        player.on_ground = false;
+    }
+
+    // Handle movement to the right
+    if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
+        player.vx += ACCELERATION;
+        if player.vx > MAX_VELOCITY {
+            player.vx = MAX_VELOCITY;
+        }
+
+        player.last_key = Some(Key::D);
+        player.direction = "RIGHT".parse().unwrap();
+
+        match player.right_increment {
+            0 => {
+                player.right_increment = 1;
+            }
+            _ => {
+                player.right_increment = 0;
+            }
+        };
+
+        // Handle movement to the left
+    } else if window.is_key_pressed(Key::A, KeyRepeat::Yes) {
+        player.vx -= ACCELERATION;
+        if player.vx < -MAX_VELOCITY {
+            player.vx = -MAX_VELOCITY;
+        }
+
+        player.last_key = Some(Key::A);
+        player.direction = "LEFT".parse().unwrap();
+
+        match player.left_increment {
+            3 => {
+                player.left_increment = 4;
+            }
+            _ => {
+                player.left_increment = 3;
+            }
+        };
+
+    } else if window.is_key_pressed(Key::X, KeyRepeat::Yes) {
+        player.last_key = Some(Key::X);
+
+        match player.direction.as_str() {
+            "RIGHT" => player.right_increment = 2,
+            "LEFT"  => player.left_increment = 5,
+            _ => {}
+        };
+
+    } else {
+        // Apply friction to gradually slow down the player
+        if player.vx > 0.0 {
+            player.vx -= FRICTION;
+            if player.vx < 0.0 {
+                player.vx = 0.0;
+            }
+        } else if player.vx < 0.0 {
+            player.vx += FRICTION;
+            if player.vx > 0.0 {
+                player.vx = 0.0;
+            }
+        }
     }
 
     // Update position based on velocity
@@ -36,47 +101,33 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
             player.x <= obstacle.x + obstacle.width {
             player.on_obstacle = true;
             player.vy = 0.0;
-            player.y = obstacle.y - 1.0; // Position player just above the obstacle
+            player.y = obstacle.y - 1.0;
             break;
         }
     }
 
-    // Check if player is on the ground
-    if player.y >= 176.0 {
+    // Reset vertical velocity and flag if player is on the ground
+    if player.y >= GROUND {
         player.on_ground = true;
         player.vy = 0.0;
-        player.y = 176.0;
+        player.y = GROUND;
     } else {
         player.on_ground = false;
     }
 
-    // Handle jump
-    if window.is_key_pressed(Key::Space, KeyRepeat::No) && player.on_ground {
-        player.vy = -10.0; // Initial jump velocity
-        player.on_ground = false;
+    // Prevent the player from moving out of bounds and handle obstacle collisions
+    if player.x < LOWER_BOUND {
+        player.x = 0.0;
+        player.vx = 0.0;
+    } else if player.x > UPPER_BOUND {
+        player.x = UPPER_BOUND;
+        player.vx = 0.0;
+    } else if is_colliding_with_obstacle(player, obstacles, player.vx, 0.0) {
+        player.x -= player.vx;
+        player.vx = 0.0;
     }
-
-
-    // Handle horizontal movement
-    if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
-        if player.x <= 235.0 && !is_colliding_with_obstacle(player, obstacles, 1.0, 0.0) {
-            player.x += 1.0;
-            player.last_key = Some(Key::D);
-        }
-    }
-
-    if window.is_key_pressed(Key::A, KeyRepeat::Yes) {
-        if player.x >= 0.0 && !is_colliding_with_obstacle(player, obstacles, -1.0, 0.0) {
-            player.x -= 1.0;
-            player.last_key = Some(Key::A);
-        } else {
-            println!("Out of bounds: {}", player.x);
-        }
-    }
-
-    // Print player position for debugging
-    println!("Player Position - x: {}, y: {}", player.x, player.y);
 }
+
 
 fn is_colliding_with_obstacle(player: &Player, obstacles: &Vec<Obstacle>, dx: f32, dy: f32) -> bool {
     for obstacle in obstacles {
@@ -91,33 +142,26 @@ fn is_colliding_with_obstacle(player: &Player, obstacles: &Vec<Obstacle>, dx: f3
 }
 
 
-pub fn update_buffer_with_state(player: &Player, sprites: &Sprites, window_buffer: &mut Vec<u32>, game_state: &Vec<Vec<GameState>>) {
-    draw_background_sprite(sprites, window_buffer, game_state);
-
-    draw_woodworm(sprites, window_buffer, player)
+pub fn update_buffer_with_state(player: &Player, sprites: &Sprites, window_buffer: &mut Vec<u32>, background_index: usize) {
+    draw_background_sprite(sprites, window_buffer, background_index);
+    draw_player(sprites, window_buffer, player)
 }
 
-pub fn draw_woodworm(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &Player) {
+pub fn draw_player(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &Player) {
 
     let frame_index = match player.last_key.unwrap_or(Key::D) {
-        Key::D => 0,
-        Key::A => 1,
-        _ => 0,
+        Key::D | Key::X if player.direction.as_str() == "RIGHT" => player.right_increment,
+        Key::A | Key::X if player.direction.as_str() == "LEFT" => player.left_increment,
+        _ => player.right_increment,
     };
 
     draw_sprite(
         player.x as usize,
         player.y as usize,
-        &sprites.kokemakken[frame_index],
+        &sprites.player[frame_index],
         window_buffer,
         WINDOW_WIDTH
     );
-}
-
-pub fn read_map_file(filename: &str) -> io::Result<Vec<String>> {
-    let file = File::open(filename)?;
-    let reader = io::BufReader::new(file);
-    reader.lines().collect()
 }
 
 pub struct GameState {
@@ -126,43 +170,8 @@ pub struct GameState {
     y_range: (usize, usize),
 }
 
-pub fn create_state_array(map_lines: &[String], tile_width: usize, tile_height: usize) -> Vec<Vec<GameState>> {
-    let mut state_array = Vec::new();
-
-    for (i, line) in map_lines.iter().enumerate() {
-        let mut row = Vec::new();
-        for (j, c) in line.char_indices() {
-            let state = GameState {
-                character: c,
-                x_range: (j * tile_width, (j + 1) * tile_width),
-                y_range: (i * tile_height, (i + 1) * tile_height),
-            };
-            row.push(state);
-        }
-        state_array.push(row);
-    }
-
-    state_array
-}
-
-fn draw_background_sprite(sprites: &Sprites, buffer: &mut [u32], game_state: &Vec<Vec<GameState>>) {
-    for (row_idx, row) in game_state.iter().enumerate() {
-        for (col_idx, state) in row.iter().enumerate() {
-            match state.character {
-                'X' => {
-                    // println!("Drawing obstacle sprite at X Range: {:?}, Y Range: {:?}", state.x_range, state.y_range);
-                    draw_sprite(state.x_range.0, state.y_range.0, &sprites.tile[0], buffer, WINDOW_WIDTH);
-                },
-                'O' => {
-                    // println!("Drawing empty sprite at X Range: {:?}, Y Range: {:?}", state.x_range, state.y_range);
-                    draw_sprite(state.x_range.0, state.y_range.0, &sprites.tile[1], buffer, WINDOW_WIDTH);
-                },
-                _ => {
-                    // println!("Unknown character '{}' at position row {}, col {}", state.character, row_idx, col_idx);
-                }
-            }
-        }
-    }
+fn draw_background_sprite(sprites: &Sprites, buffer: &mut [u32], background_index: usize) {
+    draw_sprite(0, 0, &sprites.background[background_index], buffer, WINDOW_WIDTH);
 }
 
 /// Draws the current window with the provided pixel buffer.
