@@ -13,21 +13,25 @@ use crate::{
 use crate::state::{BACKGROUND_CHANGE_INTERVAL, Obstacle};
 use crate::state::utils::{handle_key_presses, update_buffer_with_state};
 
-pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstacle>) {
+pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstacle>, fullscreen: bool) {
     // Create an event loop
     let event_loop = EventLoop::new();
 
-    // Get the primary monitor dimensions
-    let primary_monitor: MonitorHandle = event_loop.primary_monitor().expect("Failed to get primary monitor");
-    let screen_size = primary_monitor.size();
-    let screen_width: usize = screen_size.width as usize;
-    let screen_height: usize = screen_size.height as usize;
+    // Determine window size based on fullscreen flag
+    let (window_width, window_height) = if fullscreen {
+        let primary_monitor: MonitorHandle = event_loop.primary_monitor().expect("Failed to get primary monitor");
+        let screen_size = primary_monitor.size();
+        (screen_size.width as usize, screen_size.height as usize)
+    } else {
+        (SCALED_WINDOW_WIDTH, SCALED_WINDOW_HEIGHT)
+    };
 
+    // Create a window with the desired dimensions
     // Create a window with the dimensions of the primary monitor
     let mut window = Window::new(
         "Rust Platformer 0.1",
-        screen_width as usize,
-        screen_height as usize,
+        window_width as usize,
+        window_width as usize,
         WindowOptions::default(),
     ).unwrap_or_else(|e| {
         panic!("{}", e); // Panic if window creation fails
@@ -35,7 +39,7 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstac
 
     // Initialize window buffer to store pixel data at low resolution
     let mut window_buffer = vec![0; WINDOW_WIDTH * WINDOW_HEIGHT];
-    let mut scaled_buffer = vec![0; (screen_width * screen_height)];
+    let mut scaled_buffer = vec![0; window_width * window_height];
 
     // Variables for background sprite changing
     let mut background_sprite_index = 0;
@@ -58,10 +62,10 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstac
         update_buffer_with_state(player, sprites, &mut window_buffer, background_sprite_index);
 
         // Scale the buffer to the screen resolution
-        scale_buffer(&window_buffer, &mut scaled_buffer, WINDOW_WIDTH, WINDOW_HEIGHT, screen_width, screen_height);
+        scale_buffer(&window_buffer, &mut scaled_buffer, WINDOW_WIDTH, WINDOW_HEIGHT, window_width, window_height);
 
         // Draw the scaled buffer onto the window
-        window.update_with_buffer(&scaled_buffer, screen_width, screen_height).unwrap();
+        window.update_with_buffer(&scaled_buffer, window_width, window_height).unwrap();
 
         // Maintain a frame rate of approximately 60 fps
         let elapsed = start.elapsed();

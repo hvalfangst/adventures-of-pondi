@@ -9,9 +9,9 @@ const FRAME_DURATION: Duration = Duration::from_millis(16); // Approximately 60H
 const BACKGROUND_CHANGE_INTERVAL: Duration = Duration::from_secs(1);
 
 const GRAVITY: f32 = 0.5;
-const JUMP_VELOCITY: f32 = -10.0;
+const JUMP_VELOCITY: f32 = -5.0;
 const MAX_VELOCITY: f32 = 5.0;
-const ACCELERATION: f32 = 0.5;
+const ACCELERATION: f32 = 1.5;
 const FRICTION: f32 = 0.2;
 const GROUND: f32 = 176.0;
 const LOWER_BOUND: f32 = 0.0;

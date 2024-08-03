@@ -88,7 +88,11 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         }
     }
 
+
     // Update position based on velocity
+    let prev_x = player.x;
+    let prev_y = player.y;
+
     player.x += player.vx;
     player.y += player.vy;
 
@@ -115,17 +119,16 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         player.on_ground = false;
     }
 
-    // Prevent the player from moving out of bounds and handle obstacle collisions
+    // Prevent the player from moving out of bounds
     if player.x < LOWER_BOUND {
-        player.x = 0.0;
+        player.x = LOWER_BOUND;
         player.vx = 0.0;
     } else if player.x > UPPER_BOUND {
         player.x = UPPER_BOUND;
         player.vx = 0.0;
-    } else if is_colliding_with_obstacle(player, obstacles, player.vx, 0.0) {
-        player.x -= player.vx;
-        player.vx = 0.0;
     }
+
+    println!("Player X: {}, Player Y: {}\n", player.x, player.y)
 }
 
 
