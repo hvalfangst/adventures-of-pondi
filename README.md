@@ -1,4 +1,6 @@
-# 2D platformer game programmed in Rust
+# Adventures of Pondi
+
+2D platformer game programmed in Rust
 
 ![screenshot](assets/screenshot.png)
 

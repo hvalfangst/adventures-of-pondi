@@ -2,7 +2,6 @@ use crate::{
     graphics::sprites::Sprites,
     state::{event_loop::start_event_loop, Player}
 };
-use crate::graphics::constants::{TILE_HEIGHT, TILE_WIDTH};
 use crate::state::Obstacle;
 
 mod state;mod graphics;
@@ -10,7 +9,7 @@ mod state;mod graphics;
 fn main() {
     let sprites = Sprites::new();
 
-    let mut player = Player::new(0.0, 11.0 * TILE_HEIGHT as f32);
+    let mut player = Player::new(1.0, 176.0);
 
     // Initialize obstacles
     let obstacles = vec![

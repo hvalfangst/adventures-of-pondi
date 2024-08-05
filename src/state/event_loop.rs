@@ -17,6 +17,7 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstac
     // Create an event loop
     let event_loop = EventLoop::new();
 
+
     // Determine window size based on fullscreen flag
     let (window_width, window_height) = if fullscreen {
         let primary_monitor: MonitorHandle = event_loop.primary_monitor().expect("Failed to get primary monitor");
