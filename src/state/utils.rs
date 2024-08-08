@@ -31,18 +31,9 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
     // Handle movement to the right
     if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
 
+        let obstacle_right = player.x > 70.0 && player.x < 96.0 && player.on_ground;
 
-        // Calculate future position based on current position, velocity, and acceleration
-        let future_position = player.x + (player.vx + ACCELERATION);
-
-        // TODO: implement
-        // // Check if future position will collide with any obstacle
-        // let collision: bool = obstacles.iter().any(|obs| {
-        //     // Check if the future position overlaps with any obstacle
-        //     future_position > obs.x && player.x < obs.x
-        // });
-
-        if !(player.x > 70.0 && player.x < 96.0 && player.on_ground) {
+        if !obstacle_right {
             // Update velocity if no collision is detected
             player.vx += ACCELERATION;
             if player.vx > MAX_VELOCITY {
@@ -81,18 +72,9 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         // Handle movement to the left
     } else if window.is_key_pressed(Key::A, KeyRepeat::Yes) {
 
-        // TODO: implement
-        // // Calculate future position based on current position, velocity, and acceleration
-        // let future_position = player.x + (player.vx + ACCELERATION);
-        //
-        // // Check if future position will collide with any obstacle
-        // let collision: bool = obstacles.iter().any(|obs| {
-        //     // Check if the future position overlaps with any obstacle
-        //     // future_position < obs.x
-        //     false
-        // });
+        let obstacle_left = player.x < 98.0 && player.x > 70.0 && player.on_ground;
 
-        if !(player.x < 98.0 && player.x > 70.0 && player.on_ground)  {
+        if !obstacle_left {
             // Update velocity if no collision is detected
             player.vx += ACCELERATION;
             if player.vx > MAX_VELOCITY {
@@ -152,12 +134,23 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         }
     }
 
-    // player.x += player.vx;
+    // Apply vertical velocity
     player.y += player.vy;
+
+   if  player.x > 70.0 && player.x < 96.0 && player.y > 160.0 && player.y < 180.0 {
+        player.y = 185.0;
+   }
+
+    if player.y >= 140.0 && player.y <= 160.0   {
+        player.almost_ground = true;
+    } else {
+        player.almost_ground = false;
+    }
 
     // Reset vertical velocity and flag if player is on the ground
     if player.y >= GROUND {
         player.on_ground = true;
+        player.almost_ground = false;
         player.vy = 0.0;
         player.y = GROUND;
     } else {
@@ -238,12 +231,19 @@ pub fn draw_player(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &mut
             &sprites.player[player.right_increment]
         }
 
-
-    }   else if !player.on_ground && direction == "RIGHT" {
+    }   else if player.almost_ground && direction == "RIGHT" {
         &sprites.jump[1]
-    } else if !player.on_ground && direction == "LEFT" {
+    } else if player.almost_ground && direction == "LEFT" {
         &sprites.jump[4]
-    } else if direction == "RIGHT" {
+    }
+
+    else if !player.on_ground && direction == "RIGHT" {
+        &sprites.jump[2]
+    } else if !player.on_ground && direction == "LEFT" {
+        &sprites.jump[5]
+    }
+
+    else if direction == "RIGHT" {
         &sprites.player[player.right_increment]
     } else if direction == "LEFT" {
         &sprites.player[player.left_increment]
