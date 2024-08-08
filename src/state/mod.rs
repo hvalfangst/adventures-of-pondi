@@ -49,7 +49,7 @@ impl Player {
             vy: 0.0,
             on_ground: false,
             last_key: None,
-            on_obstacle: true,
+            on_obstacle: false,
             left_increment: 4,
             right_increment: 0,
             direction: "RIGHT".parse().unwrap(),

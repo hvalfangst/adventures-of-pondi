@@ -17,19 +17,23 @@ fn safe_get_char(game_state: &Vec<Vec<GameState>>, row: isize, col: isize) -> Op
 pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &Vec<Obstacle>) {
 
     // Apply gravity if player is not on ground
-    if !player.on_ground {
+    if !player.on_ground && !player.on_obstacle {
         player.vy += GRAVITY;
     }
 
     // Handle jump iff player is on the ground
-    if window.is_key_pressed(Key::Space, KeyRepeat::Yes) && player.on_ground {
+    if window.is_key_pressed(Key::Space, KeyRepeat::Yes) {
+        let space_last = match player.last_key.unwrap_or(Key::X) {
+            Key::Space => true,
+            _ => false
+        };
+
         player.vy = JUMP_VELOCITY;
         player.on_ground = false;
         player.last_key = Some(Key::Space);
     }
-
     // Handle movement to the right
-    if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
+    else if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
 
         let obstacle_right = player.x > 70.0 && player.x < 96.0 && player.on_ground;
 
@@ -135,11 +139,21 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
     }
 
     // Apply vertical velocity
-    player.y += player.vy;
+    if !player.on_obstacle {
+        player.y += player.vy;
+    }
 
-   if  player.x > 70.0 && player.x < 96.0 && player.y > 160.0 && player.y < 180.0 {
+
+    if player.x > 70.0 && player.x < 94.0 && player.y > 160.0 && player.y < 180.0 {
         player.y = 185.0;
-   }
+        player.on_obstacle = true;
+    } else if player.x > 96.0 && player.x < 100.0 && player.y == 185.0 {
+        player.on_obstacle = false;
+        player.on_ground = false;
+    } else if player.x < 76.0 && player.x > 70.0 &&  player.y == 185.0 {
+        player.on_obstacle = false;
+        player.on_ground = false;
+    }
 
     if player.y >= 140.0 && player.y <= 160.0   {
         player.almost_ground = true;
@@ -164,6 +178,11 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
     } else if player.x > UPPER_BOUND {
         player.x = UPPER_BOUND;
         player.vx = 0.0;
+    }
+
+    if player.y <= 40.0 {
+        player.on_ground = false;
+        player.y = GROUND;
     }
 
     println!("Player X: {}, Player Y: {}\n", player.x, player.y)
@@ -231,15 +250,15 @@ pub fn draw_player(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &mut
             &sprites.player[player.right_increment]
         }
 
-    }   else if player.almost_ground && direction == "RIGHT" {
+    }   else if player.almost_ground && !player.on_obstacle && direction == "RIGHT" {
         &sprites.jump[1]
-    } else if player.almost_ground && direction == "LEFT" {
+    } else if player.almost_ground && !player.on_obstacle && direction == "LEFT" {
         &sprites.jump[4]
     }
 
-    else if !player.on_ground && direction == "RIGHT" {
+    else if !player.on_ground && !player.on_obstacle && direction == "RIGHT" {
         &sprites.jump[2]
-    } else if !player.on_ground && direction == "LEFT" {
+    } else if !player.on_ground && !player.on_obstacle && direction == "LEFT" {
         &sprites.jump[5]
     }
 
