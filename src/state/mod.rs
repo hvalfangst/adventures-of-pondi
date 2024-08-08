@@ -13,7 +13,7 @@ const JUMP_VELOCITY: f32 = -5.0;
 const MAX_VELOCITY: f32 = 2.0;
 const ACCELERATION: f32 = 0.5;
 const FRICTION: f32 = 0.2;
-const GROUND: f32 = 176.0;
+const GROUND: f32 = 205.0;
 const LOWER_BOUND: f32 = 0.0;
 const UPPER_BOUND: f32 = 225.0;
 
@@ -36,7 +36,8 @@ pub struct Player {
     kick_frame: usize,
     kick_frame_timer: u32,
     kick_start_time: u32,
-    is_kicking: bool
+    is_kicking: bool,
+    almost_ground: bool
 }
 
 impl Player {
@@ -57,7 +58,8 @@ impl Player {
             kick_frame: 0,
             kick_frame_timer: 0,
             kick_start_time: 0,
-            is_kicking: true
+            is_kicking: true,
+            almost_ground: false
         }
     }
 }

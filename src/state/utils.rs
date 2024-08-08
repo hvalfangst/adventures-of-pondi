@@ -35,13 +35,14 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         // Calculate future position based on current position, velocity, and acceleration
         let future_position = player.x + (player.vx + ACCELERATION);
 
-        // Check if future position will collide with any obstacle
-        let collision: bool = obstacles.iter().any(|obs| {
-            // Check if the future position overlaps with any obstacle
-            future_position > obs.x && player.x < obs.x
-        });
+        // TODO: implement
+        // // Check if future position will collide with any obstacle
+        // let collision: bool = obstacles.iter().any(|obs| {
+        //     // Check if the future position overlaps with any obstacle
+        //     future_position > obs.x && player.x < obs.x
+        // });
 
-        if !collision {
+        if !(player.x > 70.0 && player.x < 96.0 && player.on_ground) {
             // Update velocity if no collision is detected
             player.vx += ACCELERATION;
             if player.vx > MAX_VELOCITY {
@@ -73,23 +74,25 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         }   else {
         // Handle collision response
         // Stop the player from moving right if colliding
-        // player.vx = 0.0;
+        player.vx = 0.0;
         // Optionally, adjust position to resolve overlap (if necessary)
     }
 
         // Handle movement to the left
     } else if window.is_key_pressed(Key::A, KeyRepeat::Yes) {
 
-        // Calculate future position based on current position, velocity, and acceleration
-        let future_position = player.x + (player.vx + ACCELERATION);
+        // TODO: implement
+        // // Calculate future position based on current position, velocity, and acceleration
+        // let future_position = player.x + (player.vx + ACCELERATION);
+        //
+        // // Check if future position will collide with any obstacle
+        // let collision: bool = obstacles.iter().any(|obs| {
+        //     // Check if the future position overlaps with any obstacle
+        //     // future_position < obs.x
+        //     false
+        // });
 
-        // Check if future position will collide with any obstacle
-        let collision: bool = obstacles.iter().any(|obs| {
-            // Check if the future position overlaps with any obstacle
-            future_position < obs.x + obs.width && player.x + 16.0 > obs.x
-        });
-
-        if !collision {
+        if !(player.x < 98.0 && player.x > 70.0 && player.on_ground)  {
             // Update velocity if no collision is detected
             player.vx += ACCELERATION;
             if player.vx > MAX_VELOCITY {
@@ -234,10 +237,8 @@ pub fn draw_player(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &mut
             // Default to the player sprite if not kicking
             &sprites.player[player.right_increment]
         }
-    } else if last_key == Key::Space && direction == "RIGHT" {
-        &sprites.jump[1]
-    } else if last_key == Key::Space && direction == "LEFT" {
-        &sprites.jump[4]
+
+
     }   else if !player.on_ground && direction == "RIGHT" {
         &sprites.jump[1]
     } else if !player.on_ground && direction == "LEFT" {
@@ -250,11 +251,25 @@ pub fn draw_player(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &mut
         &sprites.player[player.right_increment]
     };
 
-    // Draw the chosen sprite
+    // Draw the chosen player sprite
     draw_sprite(
         player.x as usize,
-        player.y as usize,
+        player.y as usize - (sprite_to_draw.height - 5) as usize,
         sprite_to_draw,
+        window_buffer,
+        WINDOW_WIDTH
+    );
+
+    let shadow_sprite = match player.on_ground {
+        true => &sprites.shadow[0],
+        _ => &sprites.shadow[1]
+    };
+
+    // Draw associated shadow
+    draw_sprite(
+        player.x as usize,
+        GROUND as usize + 3,
+        shadow_sprite,
         window_buffer,
         WINDOW_WIDTH
     );

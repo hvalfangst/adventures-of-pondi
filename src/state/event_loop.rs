@@ -14,6 +14,7 @@ use crate::state::{BACKGROUND_CHANGE_INTERVAL, Obstacle};
 use crate::state::utils::{handle_key_presses, update_buffer_with_state};
 
 pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstacle>, fullscreen: bool) {
+
     // Create an event loop
     let event_loop = EventLoop::new();
 

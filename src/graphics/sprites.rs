@@ -16,13 +16,15 @@ pub struct Sprites {
     pub background: Vec<Sprite>,
     pub player: Vec<Sprite>,
     pub kick: Vec<Sprite>,
-    pub jump: Vec<Sprite>
+    pub jump: Vec<Sprite>,
+    pub shadow: Vec<Sprite>
 }
 
 impl Sprites {
     pub fn new() -> Self {
         Self {
             player: load_sprites_from_map("assets/player.png", 23, 33),
+            shadow: load_sprites_from_map("assets/shadow.png", 24, 10),
             background: load_sprites_from_map("assets/background.png", 256, 224),
             kick: load_sprites_from_map("assets/kick.png", 27, 33),
             jump: load_sprites_from_map("assets/jump.png", 24, 34)
