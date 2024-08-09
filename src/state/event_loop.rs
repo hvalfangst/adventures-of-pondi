@@ -13,11 +13,10 @@ use crate::{
 use crate::state::{BACKGROUND_CHANGE_INTERVAL, Obstacle};
 use crate::state::utils::{handle_key_presses, update_buffer_with_state};
 
-pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstacle>, fullscreen: bool) {
+pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obstacles: Vec<Obstacle>, fullscreen: bool) {
 
     // Create an event loop
     let event_loop = EventLoop::new();
-
 
     // Determine window size based on fullscreen flag
     let (window_width, window_height) = if fullscreen {
@@ -28,7 +27,6 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstac
         (SCALED_WINDOW_WIDTH, SCALED_WINDOW_HEIGHT)
     };
 
-    // Create a window with the desired dimensions
     // Create a window with the dimensions of the primary monitor
     let mut window = Window::new(
         "Rust Platformer 0.1",
@@ -52,7 +50,7 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obs: &Vec<Obstac
         let start = Instant::now(); // Record start time for frame timing
 
         // Handle user key presses to update state
-        handle_key_presses(player, &mut window,  obs);
+        handle_key_presses(player, &mut window, &obstacles);
 
         // Check if it's time to change the background sprite
         if last_background_change.elapsed() >= BACKGROUND_CHANGE_INTERVAL {

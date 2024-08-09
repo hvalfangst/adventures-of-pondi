@@ -11,10 +11,11 @@ fn main() {
 
     let mut player = Player::new(1.0, 176.0);
 
-    // Initialize obstacles
+
     let obstacles = vec![
-        Obstacle { x: 70.0, y: 176.0, width: 16.0, height: 16.0 }
+         Obstacle { x_range: (70.5, 98.0), y_range: (160.0, 180.0), y_position: 187.0},
+         // Obstacle { x_range: (104.0, 158.0), y_range: (160.0, 180.0), y_position: 187.0}
     ];
 
-    start_event_loop(&mut player, &sprites, &obstacles, false);
+    start_event_loop(&mut player, &sprites, obstacles, false);
 }

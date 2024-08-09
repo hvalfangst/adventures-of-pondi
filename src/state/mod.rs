@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use minifb::Key;
 
@@ -16,7 +16,6 @@ const FRICTION: f32 = 0.2;
 const GROUND: f32 = 205.0;
 const LOWER_BOUND: f32 = 0.0;
 const UPPER_BOUND: f32 = 225.0;
-
 const KICK_FRAME_DURATION: u32 = 10;
 
 
@@ -37,7 +36,11 @@ pub struct Player {
     kick_frame_timer: u32,
     kick_start_time: u32,
     is_kicking: bool,
-    almost_ground: bool
+    almost_ground: bool,
+    obstacle_left: bool,
+    obstacle_right: bool,
+    last_jump_time: Instant,
+    jump_cooldown: Duration, // e.g., Duration::new(1, 0) for a 1-second cooldown
 }
 
 impl Player {
@@ -59,16 +62,20 @@ impl Player {
             kick_frame_timer: 0,
             kick_start_time: 0,
             is_kicking: true,
-            almost_ground: false
+            almost_ground: false,
+            obstacle_left: false,
+            obstacle_right: false,
+            last_jump_time: Instant::now(),
+            jump_cooldown: Duration::new(1, 0), // 1-second cooldown
         }
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Obstacle {
-    pub(crate) x: f32,
-    pub(crate) y: f32,
-    pub(crate) width: f32,
-    pub(crate) height: f32,
+    pub x_range: (f32, f32),
+    pub y_range: (f32, f32),
+    pub y_position: f32,
 }
 
 pub enum GameState {

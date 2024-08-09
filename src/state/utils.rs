@@ -1,4 +1,3 @@
-use std::alloc::System;
 use minifb::{Key, KeyRepeat, Window};
 
 use crate::graphics::constants::*;
@@ -16,28 +15,37 @@ fn safe_get_char(game_state: &Vec<Vec<GameState>>, row: isize, col: isize) -> Op
 
 pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &Vec<Obstacle>) {
 
-    // Apply gravity if player is not on ground
+    // Apply gravity iff player is NOT on the ground
     if !player.on_ground && !player.on_obstacle {
         player.vy += GRAVITY;
     }
 
     // Handle jump iff player is on the ground
     if window.is_key_pressed(Key::Space, KeyRepeat::Yes) {
-        let space_last = match player.last_key.unwrap_or(Key::X) {
-            Key::Space => true,
-            _ => false
-        };
 
-        player.vy = JUMP_VELOCITY;
-        player.on_ground = false;
-        player.last_key = Some(Key::Space);
+        // Jumping is restricted to 1 jump a second in order to mitigate broken infinite jumping
+        let now = Instant::now();
+        if now.duration_since(player.last_jump_time) >= player.jump_cooldown {
+            player.vy = JUMP_VELOCITY;
+            player.on_ground = false;
+            player.last_jump_time = now; // Update the last jump time
+            player.last_key = Some(Key::Space);
+        }
+
     }
+
     // Handle movement to the right
     else if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
 
-        let obstacle_right = player.x > 70.0 && player.x < 96.0 && player.on_ground;
+        // Check if the player has any obstacles to the right by checking if its x coordinate violates any of the thresholds set by obstacles
+        let obstacle_right: bool = obstacles.iter().any(|obs| {
+            player.obstacle_right = true;
+            player.x > obs.x_range.0 && player.x < obs.x_range.0 + 10.0 && player.on_ground
+        });
 
         if !obstacle_right {
+            player.obstacle_right = false;
+
             // Update velocity if no collision is detected
             player.vx += ACCELERATION;
             if player.vx > MAX_VELOCITY {
@@ -76,9 +84,17 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         // Handle movement to the left
     } else if window.is_key_pressed(Key::A, KeyRepeat::Yes) {
 
-        let obstacle_left = player.x < 98.0 && player.x > 70.0 && player.on_ground;
+
+        // Check if the player has any obstacles to the left by checking if its x coordinate violates any of the thresholds set by obstacles
+        let obstacle_left: bool = obstacles.iter().any(|obs| {
+            player.obstacle_left = true;
+            player.x < obs.x_range.1 && player.x > obs.x_range.1 -10.0 && player.on_ground
+        });
 
         if !obstacle_left {
+
+            player.obstacle_left = false;
+
             // Update velocity if no collision is detected
             player.vx += ACCELERATION;
             if player.vx > MAX_VELOCITY {
@@ -109,10 +125,8 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
             player.x -= player.vx;
 
         }  else {
-            // Handle collision response
             // Stop the player from moving right if colliding
             player.vx = 0.0;
-            // Optionally, adjust position to resolve overlap (if necessary)
         }
     } else if window.is_key_pressed(Key::X, KeyRepeat::Yes) {
         player.last_key = Some(Key::X);
@@ -143,17 +157,7 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         player.y += player.vy;
     }
 
-
-    if player.x > 70.0 && player.x < 94.0 && player.y > 160.0 && player.y < 180.0 {
-        player.y = 185.0;
-        player.on_obstacle = true;
-    } else if player.x > 96.0 && player.x < 100.0 && player.y == 185.0 {
-        player.on_obstacle = false;
-        player.on_ground = false;
-    } else if player.x < 76.0 && player.x > 70.0 &&  player.y == 185.0 {
-        player.on_obstacle = false;
-        player.on_ground = false;
-    }
+    handle_obstacle_collision(player, &obstacles);
 
     if player.y >= 140.0 && player.y <= 160.0   {
         player.almost_ground = true;
@@ -171,7 +175,7 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         player.on_ground = false;
     }
 
-    // Prevent the player from moving out of bounds
+    // Prevent the player from moving out horizontal (x) bounds
     if player.x < LOWER_BOUND {
         player.x = LOWER_BOUND;
         player.vx = 0.0;
@@ -180,26 +184,16 @@ pub fn handle_key_presses(player: &mut Player, window: &mut Window, obstacles: &
         player.vx = 0.0;
     }
 
+    // Prevent the player from moving out vertical (y) bounds
     if player.y <= 40.0 {
         player.on_ground = false;
         player.y = GROUND;
     }
 
-    println!("Player X: {}, Player Y: {}\n", player.x, player.y)
+    println!("Player X: {}, Player Y: {}\nOn ground: {}\nOn obs: {}\nObs left: {}\nObs right: {}\n", player.x, player.y, player.on_ground, player.on_obstacle, player.obstacle_left, player.obstacle_right)
 }
 
 
-fn is_colliding_with_obstacle(player: &Player, obstacles: &Vec<Obstacle>, dx: f32, dy: f32) -> bool {
-    for obstacle in obstacles {
-        if player.x + dx < obstacle.x + obstacle.width &&
-            player.x + dx + player.vx > obstacle.x &&
-            player.y + dy < obstacle.y + obstacle.height &&
-            player.y + dy + player.vy > obstacle.y {
-            return true;
-        }
-    }
-    false
-}
 
 
 pub fn update_buffer_with_state(player: &mut Player, sprites: &Sprites, window_buffer: &mut Vec<u32>, background_index: usize) {
@@ -284,15 +278,35 @@ pub fn draw_player(sprites: &Sprites, window_buffer: &mut Vec<u32>, player: &mut
         _ => &sprites.shadow[1]
     };
 
-    // Draw associated shadow
-    draw_sprite(
-        player.x as usize,
-        GROUND as usize + 3,
-        shadow_sprite,
-        window_buffer,
-        WINDOW_WIDTH
-    );
+    // Draw associated shadow if not on obstacle
+    if !player.on_obstacle {
+        draw_sprite(
+            player.x as usize,
+            GROUND as usize + 3,
+            shadow_sprite,
+            window_buffer,
+            WINDOW_WIDTH
+        );
 
+    }
+}
+
+fn is_on_obstacle(player_x: f32, player_y: f32, obstacle: &Obstacle) -> bool {
+    player_x > obstacle.x_range.0 && player_x < obstacle.x_range.1 &&
+        player_y > obstacle.y_range.0 && player_y < obstacle.y_range.1
+}
+
+fn handle_obstacle_collision(player: &mut Player, obstacles: &Vec<Obstacle>) {
+
+    obstacles.iter().for_each(|obs| {
+        if is_on_obstacle(player.x, player.y, obs) {
+            player.y = obs.y_position;
+            player.on_obstacle = true;
+        } else if player.x > obs.x_range.1 || player.x < obs.x_range.0 {
+            player.on_obstacle = false;
+            player.on_ground = false;
+        }
+    });
 }
 
 
