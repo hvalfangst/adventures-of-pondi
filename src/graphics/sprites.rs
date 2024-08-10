@@ -1,8 +1,8 @@
 use image::GenericImageView;
 
 pub struct Sprite {
-    pub(crate) width: u32,  // Width of the sprite in pixels
-    pub(crate) height: u32, // Height of the sprite in pixels
+    pub width: u32,  // Width of the sprite in pixels
+    pub height: u32, // Height of the sprite in pixels
     data: Vec<u32>, // Pixel data of the sprite, typically in ARGB or RGBA format
 }
 
