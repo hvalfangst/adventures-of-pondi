@@ -23,9 +23,8 @@ pub struct Player {
     pub almost_ground: bool,
     pub obstacle_left: bool,
     pub obstacle_right: bool,
-    pub last_jump_time: Instant,
-    pub jump_cooldown: Duration,
-    pub on_obstacles: HashSet<ObstacleId>
+    pub on_obstacles: HashSet<ObstacleId>,
+    pub is_jumping: bool
 }
 
 impl Player {
@@ -50,9 +49,8 @@ impl Player {
             almost_ground: false,
             obstacle_left: false,
             obstacle_right: false,
-            last_jump_time: Instant::now(),
-            jump_cooldown: Duration::new(1, 0), // 1-second cooldown
-            on_obstacles: HashSet::new()
+            on_obstacles: HashSet::new(),
+            is_jumping: false
         }
     }
 }

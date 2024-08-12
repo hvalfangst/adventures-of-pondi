@@ -35,10 +35,10 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obstacles: &Vec<
         window_height,
         WindowOptions::default(),
     ).unwrap_or_else(|e| {
-        panic!("{}", e); // Panic if window creation fails
+        panic!("{}", e);
     });
 
-    // Initialize window buffer to store pixel data at low resolution
+    // Initialize window and scaled buffer
     let mut window_buffer = vec![0; WINDOW_WIDTH * WINDOW_HEIGHT];
     let mut scaled_buffer = vec![0; window_width * window_height];
 
@@ -48,15 +48,15 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obstacles: &Vec<
 
     // Main event loop: runs as long as the window is open and the Escape key is not pressed
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        let start = Instant::now(); // Record start time for frame timing
+        let start = Instant::now();
 
         // Update game state based on user input
         handle_user_input(player, &mut window, &obstacles, &commands, &global_commands);
 
-        // Check if it's time to change the background sprite
+        // Change background sprite every second
         if last_background_change.elapsed() >= BACKGROUND_CHANGE_INTERVAL {
             background_sprite_index = (background_sprite_index + 1) % 4; // Cycle between 0 and 3
-            last_background_change = Instant::now(); // Reset the timer
+            last_background_change = Instant::now(); // Reset the timer to current time
         }
 
         // Update the pixel buffer with the current game state
@@ -65,7 +65,7 @@ pub fn start_event_loop(player: &mut Player, sprites: &Sprites, obstacles: &Vec<
         // Render the updated buffer
         render(window_width, window_height, &mut window, &mut window_buffer, &mut scaled_buffer);
 
-        // Maintain a frame rate of approximately 60 fps
+        // Maintain a frame rate of 60 fps
         let elapsed = start.elapsed();
         if elapsed < FRAME_DURATION {
             thread::sleep(FRAME_DURATION - elapsed);

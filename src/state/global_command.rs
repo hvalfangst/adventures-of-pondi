@@ -1,7 +1,8 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
-use crate::state::{GRAVITY, GROUND, LOWER_BOUND, Obstacle, UPPER_BOUND};
+
+use crate::state::{GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND};
 use crate::state::player::Player;
 
 pub trait GlobalCommand {
@@ -21,32 +22,8 @@ impl GlobalCommand for ApplyGravity {
 pub struct CollisionDetection;
 
 impl GlobalCommand for CollisionDetection {
-    fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>) {
-        let mut obstacles_on = HashSet::new(); // Track obstacles the player is on
-        let mut highest_y_position = player.y; // Track the highest y position for transition
-
-        for obs in obstacles.iter() {
-            if is_on_obstacle(player.x, player.y, obs) {
-                println!("Player is on obstacle: {:?}", obs.id);
-                obstacles_on.insert(obs.id);
-                if obs.y_transition_pos > highest_y_position {
-                    highest_y_position = obs.y_transition_pos;
-                }
-            } else {
-                println!("Player is not on obstacle: {:?}", obs.id);
-            }
-        }
-
-        // Update player's position and state based on obstacles tracked
-        player.y = highest_y_position;
-        player.on_obstacles = obstacles_on;
-        // player.on_ground = !player.on_obstacles.is_empty(); // Set on ground if on any obstacle
-
-        println!("Final player state:");
-        println!("Player position: x = {}, y = {}", player.x, player.y);
-        println!("Obstacles player is on: {:?}", player.on_obstacles);
-        println!("Player on ground: {}", player.on_ground);
-        println!("Highest y transition position: {}\n", highest_y_position);
+    fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
+        jump_obstacles(player);
     }
 }
 
@@ -82,6 +59,8 @@ pub struct Misc;
 impl GlobalCommand for Misc {
     fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
 
+        println!("y vel: {}", player.vy);
+
         // Apply vertical velocity
         if !player.on_obstacle {
             player.y += player.vy;
@@ -97,8 +76,10 @@ impl GlobalCommand for Misc {
         if player.y >= GROUND {
             player.on_ground = true;
             player.almost_ground = false;
+            player.on_obstacle = false;
             player.vy = 0.0;
             player.y = GROUND;
+            player.is_jumping = false;
         } else {
             player.on_ground = false;
         }

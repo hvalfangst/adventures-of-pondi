@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use minifb::Key;
 
-use crate::state::{ACCELERATION, JUMP_VELOCITY, MAX_VELOCITY, Obstacle};
+use crate::state::{ACCELERATION, jump_obstacles, JUMP_VELOCITY, MAX_VELOCITY, Obstacle};
 use crate::state::player::Player;
 
 pub trait Command {
@@ -12,9 +12,6 @@ pub trait Command {
 }
 
 pub struct MoveLeft;
-pub struct MoveRight;
-pub struct Jump;
-pub struct Kick;
 
 impl Command for MoveLeft {
     fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>) {
@@ -22,7 +19,7 @@ impl Command for MoveLeft {
         // Check if the player has any obstacles to the left by checking if its x coordinate violates any of the thresholds set by obstacles
         let obstacle_left: bool = obstacles.iter().any(|obs| {
             player.obstacle_left = true;
-            player.x < obs.x_right && player.x > obs.x_right -10.0 && player.on_ground
+            player.x < obs.x_right && player.x > obs.x_right -10.0 && player.y == obs.y_transition_pos
         });
 
         if !obstacle_left {
@@ -58,12 +55,16 @@ impl Command for MoveLeft {
             // Move player based on current velocity
             player.x -= player.vx;
 
+            jump_obstacles(player);
+
         }  else {
-            // Stop the player from moving right if colliding
+            // Stop the player from moving left if colliding
             player.vx = 0.0;
         }
     }
 }
+
+pub struct MoveRight;
 
 impl Command for MoveRight {
     fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>) {
@@ -71,7 +72,7 @@ impl Command for MoveRight {
         // Check if the player has any obstacles to the right by checking if its x coordinate violates any of the thresholds set by obstacles
         let obstacle_right: bool = obstacles.iter().any(|obs| {
             player.obstacle_right = true;
-            player.x > obs.x_left && player.x < obs.x_left + 10.0 && player.on_ground
+            player.x > obs.x_left && player.x < obs.x_left + 10.0 && player.y >= obs.y_transition_pos
         });
 
         if !obstacle_right {
@@ -105,6 +106,8 @@ impl Command for MoveRight {
             // Move player based on current velocity
             player.x += player.vx;
 
+            jump_obstacles(player);
+
         }   else {
             // Stop the player from moving right if colliding
             player.vx = 0.0;
@@ -112,20 +115,21 @@ impl Command for MoveRight {
     }
 }
 
+pub struct Jump;
+
 impl Command for Jump {
     fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
 
-        // Jumping is restricted to 1 jump a second in order to mitigate broken infinite jumping
-        let now = Instant::now();
-        if now.duration_since(player.last_jump_time) >= player.jump_cooldown {
+        if !player.is_jumping {
             player.vy = JUMP_VELOCITY;
             player.on_ground = false;
-            player.last_jump_time = now; // Update the last jump time
             player.last_key = Some(Key::Space);
+            player.is_jumping = true;
         }
     }
 }
 
+pub struct Kick;
 
 impl Command for Kick {
     fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
