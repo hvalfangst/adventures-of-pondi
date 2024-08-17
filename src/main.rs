@@ -15,11 +15,11 @@ fn main() {
     let sprites = Sprites::new();
 
     let obstacles = vec![
-        Obstacle { id: ObstacleId(1),  x_left: 70.5, x_right: 98.0, y_bottom: 185.0, y_top: 175.0, y_transition_pos: 205.0},
-        Obstacle { id: ObstacleId(2), x_left: 107.0, x_right: 160.0, y_bottom: 185.0, y_top: 175.0, y_transition_pos: 205.0},
-        Obstacle { id: ObstacleId(3), x_left: 160.0, x_right: 212.0, y_bottom: 185.0, y_top: 175.0, y_transition_pos: 205.0},
-        Obstacle { id: ObstacleId(3), x_left: 173.0, x_right: 212.0, y_bottom: 185.0, y_top: 185.0, y_transition_pos: 185.0},
-    ];
+        Obstacle { id: ObstacleId(1),  x_left: 70.5, x_right: 98.0, y_bottom: 185.0, y_top: 175.0, y_left: 205.0, y_right: 205.0},
+        Obstacle { id: ObstacleId(2), x_left: 107.0, x_right: 160.0, y_bottom: 185.0, y_top: 175.0, y_left: 205.0, y_right: 205.0},
+        Obstacle { id: ObstacleId(3), x_left: 172.0, x_right: 195.0, y_bottom: 170.0, y_top: 162.0, y_left: 185.0, y_right: 185.0},
+        Obstacle { id: ObstacleId(4), x_left: 191.0, x_right: 215.0, y_bottom: 160.0, y_top: 150.0, y_left: 205.0, y_right: 170.0},
+     ];
 
     let mut player = Player::new(1.0, 176.0);
 

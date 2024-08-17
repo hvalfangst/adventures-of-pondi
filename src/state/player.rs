@@ -1,31 +1,47 @@
 use std::collections::HashSet;
-use std::time::{Duration, Instant};
-use minifb::Key;
-use crate::state::ObstacleId;
 
-pub struct Player {
-    pub x: f32,
-    pub y: f32,
-    pub vx: f32,
-    pub vy: f32,
-    pub on_ground: bool,
-    pub on_obstacle: bool,
-    pub last_key: Option<Key>,
-    pub left_increment: usize,
-    pub right_increment: usize,
-    pub direction: String,
-    pub right_increment_frame_count: usize,
-    pub left_increment_frame_count: usize,
-    pub kick_frame: usize,
-    pub kick_frame_timer: u32,
-    kick_start_time: u32,
-    pub is_kicking: bool,
-    pub almost_ground: bool,
-    pub obstacle_left: bool,
-    pub obstacle_right: bool,
-    pub on_obstacles: HashSet<ObstacleId>,
-    pub is_jumping: bool
+use minifb::Key;
+
+use crate::state::{Direction, ObstacleId};
+use crate::state::Direction::Right;
+use crate::state::player::PlayerState::OnGround;
+
+// Define the states of the player
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum PlayerState {
+    OnGround,
+    AlmostGround,
+    InAir,
+    Walking,
+    Attacking,
+    Idle,
+    OnObstacle
 }
+    pub struct Player {
+        pub x: f32,
+        pub y: f32,
+        pub vx: f32,
+        pub vy: f32,
+        pub on_ground: bool,
+        pub on_obstacle: bool,
+        pub last_key: Option<Key>,
+        pub left_increment: usize,
+        pub right_increment: usize,
+        pub direction: Direction,
+        pub right_increment_frame_count: usize,
+        pub left_increment_frame_count: usize,
+        pub kick_frame: usize,
+        pub kick_frame_timer: u32,
+        pub kick_start_time: u32,
+        pub is_kicking: bool,
+        pub almost_ground: bool,
+        pub obstacle_left: bool,
+        pub obstacle_right: bool,
+        pub on_obstacles: HashSet<ObstacleId>,
+        pub is_jumping: bool,
+        pub state: PlayerState,
+        pub above_obstacle: bool
+    }
 
 impl Player {
     pub fn new(x: f32, y: f32) -> Self {
@@ -39,7 +55,7 @@ impl Player {
             on_obstacle: false,
             left_increment: 4,
             right_increment: 0,
-            direction: "RIGHT".parse().unwrap(),
+            direction: Right,
             right_increment_frame_count: 0,
             left_increment_frame_count: 0,
             kick_frame: 0,
@@ -50,7 +66,9 @@ impl Player {
             obstacle_left: false,
             obstacle_right: false,
             on_obstacles: HashSet::new(),
-            is_jumping: false
+            is_jumping: false,
+            state: OnGround,
+            above_obstacle: false
         }
     }
 }
