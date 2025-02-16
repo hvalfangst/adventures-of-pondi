@@ -3,127 +3,141 @@ use std::sync::Arc;
 
 use minifb::Key;
 
-use crate::state::{ACCELERATION, JUMP_VELOCITY, MAX_VELOCITY, Obstacle};
+use crate::graphics::sprites::Sprites;
+use crate::sort_obstacles_by_y;
+use crate::state::{ACCELERATION, Context, JUMP_VELOCITY, MAX_VELOCITY, Obstacle, remove_box};
 use crate::state::Direction::{Left, Right};
 use crate::state::player::Player;
 
 pub trait Command {
-    fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>);
+    fn execute(&self, context: &mut Context);
 }
 
 pub struct MoveLeft;
-
 impl Command for MoveLeft {
-    fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>) {
-
-            // Check if the player has any obstacles to the left by checking if its x coordinate violates any of the thresholds set by obstacles
-            let obstacle_left: bool = obstacles.iter().any(|obs| {
-                player.obstacle_left = true;
-                player.x < obs.x_right && player.x > obs.x_right -10.0 && player.y == obs.y_left
-            });
+    fn execute(&self, context: &mut Context) {
+        let (obstacle_left, _id) = check_collision(context.all_maps[context.current_map_index].obstacles, &context.sprites, &context.player, true);
 
         if !obstacle_left {
-
-            player.obstacle_left = false;
+            context.player.obstacle_left = false;
 
             // Update velocity if no collision is detected
-            player.vx += ACCELERATION;
-            if player.vx > MAX_VELOCITY {
-                player.vx = MAX_VELOCITY;
+            context.player.vx += ACCELERATION;
+            if context.player.vx > MAX_VELOCITY {
+                context.player.vx = MAX_VELOCITY;
             }
 
-            player.last_key = Some(Key::A);
-            player.direction = Left;
+            context.player.last_key = Some(Key::A);
+            context.player.direction = Left;
 
             // Initialize a new field to track the frame count
-            player.left_increment_frame_count += 1;
+            context.player.left_increment_frame_count += 1;
 
-            if player.left_increment_frame_count >= 3 {
-                player.left_increment_frame_count = 0; // Reset the frame count
+            if context.player.left_increment_frame_count >= 3 {
+                context.player.left_increment_frame_count = 0; // Reset the frame count
 
-
-                match player.left_increment {
+                match context.player.left_increment {
                     7 => {
-                        player.left_increment = 4;
+                        context.player.left_increment = 4;
                     }
                     _ => {
-                        player.left_increment += 1;
+                        context.player.left_increment += 1;
                     }
                 };
             }
-        }  else {
+        } else {
             // Stop the player from moving left if colliding
-            player.vx = 0.0;
+            context.player.vx = 0.0;
         }
 
         // Move player based on current velocity
-        player.x -= player.vx;
-
+        context.player.x -= context.player.vx;
     }
 }
 
 pub struct MoveRight;
 
 impl Command for MoveRight {
-    fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>) {
-
-        // Check if the player has any obstacles to the right by checking if its x coordinate violates any of the thresholds set by obstacles
-        let obstacle_right: bool = obstacles.iter().any(|obs| {
-            player.obstacle_right = true;
-            player.x > obs.x_left && player.x < obs.x_left + 10.0 && player.y >= obs.y_right
-        });
+    fn execute(&self, context: &mut Context) {
+        let (obstacle_right, _id) = check_collision(context.all_maps[context.current_map_index].obstacles, &context.sprites, &context.player, false);
 
         if !obstacle_right {
-            player.obstacle_right = false;
+            context.player.obstacle_right = false;
 
             // Update velocity if no collision is detected
-            player.vx += ACCELERATION;
-            if player.vx > MAX_VELOCITY {
-                player.vx = MAX_VELOCITY;
+            context.player.vx += ACCELERATION;
+            if context.player.vx > MAX_VELOCITY {
+                context.player.vx = MAX_VELOCITY;
             }
 
-            player.last_key = Some(Key::D);
-            player.direction = Right;
+            context.player.last_key = Some(Key::D);
+            context.player.direction = Right;
 
             // Initialize a new field to track the frame count
-            player.right_increment_frame_count += 1;
+            context.player.right_increment_frame_count += 1;
 
-            if player.right_increment_frame_count >= 3 {
-                player.right_increment_frame_count = 0; // Reset the frame count
+            if context.player.right_increment_frame_count >= 3 {
+                context.player.right_increment_frame_count = 0; // Reset the frame count
 
-                match player.right_increment {
+                match context.player.right_increment {
                     3 => {
-                        player.right_increment = 0;
+                        context.player.right_increment = 0;
                     }
                     _ => {
-                        player.right_increment += 1;
+                        context.player.right_increment += 1;
                     }
                 }
             }
-
-        }   else {
+        } else {
             // Stop the player from moving right if colliding
-            player.vx = 0.0;
+            context.player.vx = 0.0;
         }
 
-
         // Move player based on current velocity
-        player.x += player.vx;
-
+        context.player.x += context.player.vx;
     }
+}
+
+pub fn check_collision(obstacles: &Vec<Obstacle>, sprites: &Sprites, player: &Player, is_left: bool) -> (bool, Option<usize>) {
+    let mut collision_id: Option<usize> = None;
+    let collision = obstacles.iter().enumerate().any(|(index, obstacle)| {
+
+        if obstacle.active == false {
+            return false;
+        }
+
+        let player_x = if is_left {
+            player.x + (sprites.player[player.left_increment].width as f32 / 2.5)
+        } else {
+            player.x + (sprites.player[player.right_increment].width as f32 / 1.5)
+        };
+        println!("Checking collision: player_x: {}, obstacle.x_left: {}, obstacle.x_right: {}, player_y: {}, obstacle.y_bottom: {}", player_x, obstacle.x_left, obstacle.x_right, player.y, obstacle.y_bottom);
+        if player_x > obstacle.x_left && player_x < obstacle.x_right && player.y >= obstacle.y_bottom {
+            collision_id = Some(index);
+            true
+        } else {
+            false
+        }
+    });
+
+    if let Some(id) = collision_id {
+        println!("Collision detected at x: {}, y: {}, with obstacle id: {}", player.x, player.y, id);
+    }
+
+    (collision, collision_id)
 }
 
 pub struct Jump;
 
 impl Command for Jump {
-    fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
+    fn execute(&self, context: &mut Context) {
 
-        if !player.is_jumping && (player.on_ground || player.on_obstacle) {
-            player.vy = JUMP_VELOCITY;
-            player.on_ground = false;
-            player.on_obstacle = false;
-            player.is_jumping = true;
-            player.last_key = Some(Key::Space);
+        if !context.player.is_jumping && (context.player.on_ground || context.player.on_obstacle) {
+            context.player.vy = JUMP_VELOCITY;
+            context.player.on_ground = false;
+            context.player.on_obstacle = false;
+            context.player.is_jumping = true;
+            context.player.last_key = Some(Key::Space);
         }
     }
 }
@@ -131,15 +145,27 @@ impl Command for Jump {
 pub struct Kick;
 
 impl Command for Kick {
-    fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
+    fn execute(&self, context: &mut Context) {
+        context.player.is_kicking = true;
+        context.player.kick_frame = 0;
+        context.player.kick_frame_timer = 0;
 
-        player.last_key = Some(Key::X);
+        let sorted_obstacles = sort_obstacles_by_y(context.all_maps[context.current_map_index].obstacles);
 
-        match player.direction {
-            Right => player.right_increment = 2,
-            Left  => player.left_increment = 5,
-            _ => {}
-        };
+        let (collision, id) = check_collision(sorted_obstacles, &context.sprites, &context.player, context.player.direction == Left);
+
+        // Check if the player is adjacent to an obstacle to the right
+        if collision {
+            println!("Player is adjacent to an obstacle with id {} to the right.", id.unwrap());
+            if context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability > 0 {
+                println!("Obstacle durability: {}", context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability);
+                context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability -= 1;
+            } else {
+                println!("Obstacle durability: 0");
+                remove_box(context, id.unwrap());
+            }
+
+        }
     }
 }
 

@@ -1,20 +1,37 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-
-use crate::state::{GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND};
+use std::thread::sleep;
+use crate::graphics::renderer::render;
+use crate::state::{Context, GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND};
 use crate::state::player::Player;
-
+use crate::state::update::update;
 pub trait GlobalCommand {
-    fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>);
+    fn execute(&self, context: &mut Context);
 }
 
 pub struct ApplyGravity;
 
 impl GlobalCommand for ApplyGravity {
-    fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
-        if !player.on_ground && !player.on_obstacle {
-            player.vy += GRAVITY;
+    fn execute(&self, context: &mut Context) {
+        // Apply gravity to the player
+        if !context.player.on_ground && !context.player.on_obstacle {
+            context.player.vy += GRAVITY;
+        }
+
+        // Apply gravity to all obstacles which have falling boolean
+        for obstacle in context.all_maps[context.current_map_index].obstacles.iter_mut() {
+            if obstacle.active && obstacle.falling {
+                if obstacle.velocity_y >= 16.0 {
+                    println!("obstacle.velocity_y: {}", obstacle.velocity_y);
+                    obstacle.falling = false;
+                } else {
+                    obstacle.y_bottom += GRAVITY;
+                    obstacle.y_top += GRAVITY;
+                    obstacle.velocity_y += GRAVITY;
+                    println!("obstacle.y_bottom: {}, obstacle.y_top: {}", obstacle.y_bottom, obstacle.y_top);
+                }
+            }
         }
     }
 }
@@ -22,19 +39,19 @@ impl GlobalCommand for ApplyGravity {
 pub struct JumpingObstacles;
 
 impl GlobalCommand for JumpingObstacles {
-    fn execute(&self, player: &mut Player, obstacles: &Vec<Obstacle>) {
-        jump_obstacles(player, obstacles);
+    fn execute(&self, context: &mut Context) {
+        jump_obstacles(context);
     }
 }
 
 pub struct VerticalBounds;
 
 impl GlobalCommand for VerticalBounds {
-    fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
+    fn execute(&self, context: &mut Context) {
         // Prevent the player from moving out vertical (y) bounds
-        if player.y <= 40.0 {
-            player.on_ground = false;
-            player.y = GROUND;
+        if context.player.y <= 40.0 {
+            context.player.on_ground = false;
+            context.player.y = GROUND;
         }
     }
 }
@@ -42,14 +59,35 @@ impl GlobalCommand for VerticalBounds {
 pub struct HorizontalBounds;
 
 impl GlobalCommand for HorizontalBounds {
-    fn execute(&self, player: &mut Player, _obstacles: &Vec<Obstacle>) {
+    fn execute(&self, context: &mut Context) {
         // Prevent the player from moving out horizontal (x) bounds
-        if player.x < LOWER_BOUND {
-            player.x = LOWER_BOUND;
-            player.vx = 0.0;
-        } else if player.x > UPPER_BOUND {
-            player.x = UPPER_BOUND;
-            player.vx = 0.0;
+        if context.player.x < LOWER_BOUND {
+            context.player.x = LOWER_BOUND;
+            context.player.vx = 0.0;
+        } else if context.player.x >= UPPER_BOUND {
+            context.player.x = 0.0;
+            context.player.vx = 0.0;
+            context.current_map_index += 1
+        }
+    }
+}
+
+pub struct CheckGameOver;
+
+impl GlobalCommand for CheckGameOver {
+    fn execute(&self, context: &mut Context) {
+        if context.player.game_over {
+            println!("Game Over!");
+
+            for _ in 0..4 {
+                update(context);
+                render(context);
+                context.game_over_index += 1;
+                sleep(std::time::Duration::from_millis(200));
+            }
+
+            context.game_over_index = 0;
+            context.player = Player::new(0.0, GROUND); // Reset player state
         }
     }
 }
@@ -60,12 +98,9 @@ pub fn initialize_global_command_map() -> HashMap<String, Rc<RefCell<dyn GlobalC
     global_commands.insert("ApplyGravity".to_string(), Rc::new(RefCell::new(ApplyGravity)));
     global_commands.insert("VerticalBounds".to_string(), Rc::new(RefCell::new(VerticalBounds)));
     global_commands.insert("HorizontalBounds".to_string(), Rc::new(RefCell::new(HorizontalBounds)));
+    global_commands.insert("CheckGameOver".to_string(), Rc::new(RefCell::new(CheckGameOver)));
+
 
 
     global_commands
-}
-
-fn is_on_obstacle(player_x: f32, player_y: f32, obstacle: &Obstacle) -> bool {
-    player_x > obstacle.x_left && player_x < obstacle.x_right &&
-        player_y > obstacle.y_top && player_y < obstacle.y_bottom
 }

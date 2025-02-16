@@ -3,7 +3,7 @@ use image::GenericImageView;
 pub struct Sprite {
     pub width: u32,  // Width of the sprite in pixels
     pub height: u32, // Height of the sprite in pixels
-    data: Vec<u32>, // Pixel data of the sprite, typically in ARGB or RGBA format
+    data: Vec<u32> // Pixel data of the sprite, typically in ARGB or RGBA format
 }
 
 impl Sprite {
@@ -13,11 +13,15 @@ impl Sprite {
 }
 
 pub struct Sprites {
-    pub background: Vec<Sprite>,
     pub player: Vec<Sprite>,
     pub kick: Vec<Sprite>,
     pub jump: Vec<Sprite>,
-    pub shadow: Vec<Sprite>
+    pub shadow: Vec<Sprite>,
+    pub game_over: Vec<Sprite>,
+    pub grass: Vec<Sprite>,
+    pub sky: Vec<Sprite>,
+    pub blue_background: Vec<Sprite>,
+    pub metal_box: Vec<Sprite>
 }
 
 impl Sprites {
@@ -25,9 +29,13 @@ impl Sprites {
         Self {
             player: load_sprites_from_map("assets/player.png", 23, 33),
             shadow: load_sprites_from_map("assets/shadow.png", 24, 10),
-            background: load_sprites_from_map("assets/background.png", 256, 224),
+            game_over: load_sprites_from_map("assets/game_over.png", 256, 224),
             kick: load_sprites_from_map("assets/kick.png", 27, 33),
-            jump: load_sprites_from_map("assets/jump.png", 24, 34)
+            jump: load_sprites_from_map("assets/jump.png", 24, 34),
+            grass: load_sprites_from_map("assets/grass.png", 256, 17),
+            sky: load_sprites_from_map("assets/sky.png", 256, 134),
+            blue_background: load_sprites_from_map("assets/blue_background.png", 256, 224),
+            metal_box: load_sprites_from_map("assets/box.png", 16, 16),
         }
     }
 }

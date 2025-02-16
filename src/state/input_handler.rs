@@ -2,14 +2,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use minifb::{Key, KeyRepeat, Window};
+use minifb::{Key, KeyRepeat};
 
-use crate::state::{apply_friction, Obstacle};
+use crate::state::{apply_friction, Context};
 use crate::state::command::CommandMap;
 use crate::state::global_command::GlobalCommand;
-use crate::state::player::Player;
 
-pub fn handle_user_input(player: &mut Player, window: &mut Window, obstacles: &Vec<Obstacle>, commands: &CommandMap, global_commands: &HashMap<String, Rc<RefCell<dyn GlobalCommand>>>) {
+pub fn handle_user_input(context: &mut Context, commands: &CommandMap, global_commands: &HashMap<String, Rc<RefCell<dyn GlobalCommand>>>) {
 
     let legal_keys = [Key::Space, Key::D, Key::A, Key::X];
 
@@ -17,26 +16,26 @@ pub fn handle_user_input(player: &mut Player, window: &mut Window, obstacles: &V
     let mut any_key_pressed = false;
 
     for key in legal_keys.iter() {
-        if window.is_key_pressed(*key, KeyRepeat::Yes) {
+        if context.window.is_key_pressed(*key, KeyRepeat::Yes) {
             any_key_pressed = true;
-            delegate_command(player, *key, &commands, obstacles);
+            delegate_command(*key, &commands, context);
         }
     }
 
     // Execute all global commands
     for (_, global_command) in global_commands.iter() {
-        global_command.borrow().execute(player, obstacles);
+        global_command.borrow().execute(context);
     }
 
     // Apply friction to gradually slow down the player
     if !any_key_pressed {
-        apply_friction(player);
+        apply_friction(context);
     }
 }
 
-fn delegate_command(player: &mut Player, key: Key, commands: &CommandMap, obstacles: &Vec<Obstacle>) {
+fn delegate_command(key: Key, commands: &CommandMap, context: &mut Context) {
     if let Some(command) = commands.get(&key) {
-        command.execute(player, obstacles);
+        command.execute(context);
     } else {
         println!("No command associated with key: {:?}", key);
     }

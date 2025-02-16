@@ -30,17 +30,20 @@ pub enum PlayerState {
         pub direction: Direction,
         pub right_increment_frame_count: usize,
         pub left_increment_frame_count: usize,
-        pub kick_frame: usize,
-        pub kick_frame_timer: u32,
         pub kick_start_time: u32,
         pub is_kicking: bool,
+        pub kick_frame: usize,
+        pub kick_frame_timer: usize,
         pub almost_ground: bool,
         pub obstacle_left: bool,
         pub obstacle_right: bool,
         pub on_obstacles: HashSet<ObstacleId>,
         pub is_jumping: bool,
         pub state: PlayerState,
-        pub above_obstacle: bool
+        pub above_obstacle: bool,
+        pub current_map: usize,
+        pub spike_active: bool,
+        pub game_over: bool
     }
 
 impl Player {
@@ -58,17 +61,20 @@ impl Player {
             direction: Right,
             right_increment_frame_count: 0,
             left_increment_frame_count: 0,
+            is_kicking: false,
             kick_frame: 0,
             kick_frame_timer: 0,
             kick_start_time: 0,
-            is_kicking: true,
             almost_ground: false,
             obstacle_left: false,
             obstacle_right: false,
             on_obstacles: HashSet::new(),
             is_jumping: false,
             state: OnGround,
-            above_obstacle: false
+            above_obstacle: false,
+            current_map: 1,
+            spike_active: false,
+            game_over: false
         }
     }
 }

@@ -1,12 +1,12 @@
-use minifb::Window;
-use crate::graphics::constants::{WINDOW_HEIGHT, WINDOW_WIDTH};
 
-pub fn render(window_width: usize, window_height: usize, window: &mut Window, window_buffer: &mut Vec<u32>, mut scaled_buffer: &mut Vec<u32>) {
+use crate::state::Context;
+
+pub fn render(context: &mut Context) {
     // Scale the buffer to the screen resolution
-    scale_buffer(&window_buffer, &mut scaled_buffer, WINDOW_WIDTH, WINDOW_HEIGHT, window_width, window_height);
+    scale_buffer(&context.window_buffer, &mut context.scaled_buffer, context.all_maps[context.current_map_index].width, context.all_maps[context.current_map_index].height, context.window_width, context.window_height);
 
     // Draw the scaled buffer onto the window
-    window.update_with_buffer(&scaled_buffer, window_width, window_height).unwrap();
+    context.window.update_with_buffer(&context.scaled_buffer, context.window_width, context.window_height).unwrap();
 }
 
 // Function to scale a buffer to a different resolution
