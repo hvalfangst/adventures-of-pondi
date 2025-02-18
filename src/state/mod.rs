@@ -17,7 +17,7 @@ const FRAME_DURATION: Duration = Duration::from_nanos(16666667); // 16.6666667 m
 const BACKGROUND_CHANGE_INTERVAL: Duration = Duration::from_secs(1);
 
 const GRAVITY: f32 = 0.5;
-const JUMP_VELOCITY: f32 = -7.0;
+const JUMP_VELOCITY: f32 = -5.0;
 const MAX_VELOCITY: f32 = 2.0;
 const ACCELERATION: f32 = 0.5;
 const FRICTION: f32 = 0.2;
@@ -72,7 +72,7 @@ pub fn jump_obstacles(mut context: &mut Context) {
 
         if context.player.x + 10.0 > obstacle.x_left && context.player.x + 5.0 < obstacle.x_right {
             if context.player.y <= obstacle.y_bottom && context.player.y >= obstacle.y_top {
-                 println!("context.player.y: {}, obstacle.y_bottom: {}, obstacle.y_top: {}", context.player.y, obstacle.y_bottom, obstacle.y_top);
+                 // println!("context.player.y: {}, obstacle.y_bottom: {}, obstacle.y_top: {}", context.player.y, obstacle.y_bottom, obstacle.y_top);
                 if context.player.state != PlayerState::OnObstacle {
                     // player just landed on the obstacle
                     context.player.y = obstacle.y_bottom - 1.0;
@@ -174,7 +174,7 @@ fn remove_box(context: &mut Context, box_index: usize) {
             if obstacle.x_left >= removed_box_x_left && obstacle.x_right <= removed_box_x_right {
                 obstacle.falling = true;
                 obstacle.velocity_y = 0.0;
-                println!("Box {} is falling", i);
+                // println!("Box {} is falling", i);
             }
         }
     }

@@ -222,7 +222,7 @@ fn print_grid(grid: &Vec<Tile>) {
 fn find_obstacles(grid: &Vec<Tile>) {
     for tile in grid {
         if let TileType::Obstacle = tile.tile_type {
-            println!("Obstacle found: X.LEFT {}, X.RIGHT {}, Y.BOTTOM {}, Y.TOP {}", tile.x_left, tile.x_right, tile.y_bottom, tile.y_top);
+            // println!("Obstacle found: X.LEFT {}, X.RIGHT {}, Y.BOTTOM {}, Y.TOP {}", tile.x_left, tile.x_right, tile.y_bottom, tile.y_top);
         }
     }
 }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::thread::sleep;
 use crate::graphics::renderer::render;
-use crate::state::{Context, GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND};
+use crate::state::{Context, Direction, GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND};
 use crate::state::player::Player;
 use crate::state::update::update;
 pub trait GlobalCommand {
@@ -23,13 +23,13 @@ impl GlobalCommand for ApplyGravity {
         for obstacle in context.all_maps[context.current_map_index].obstacles.iter_mut() {
             if obstacle.active && obstacle.falling {
                 if obstacle.velocity_y >= 16.0 {
-                    println!("obstacle.velocity_y: {}", obstacle.velocity_y);
+                    // println!("obstacle.velocity_y: {}", obstacle.velocity_y);
                     obstacle.falling = false;
                 } else {
-                    obstacle.y_bottom += GRAVITY;
-                    obstacle.y_top += GRAVITY;
-                    obstacle.velocity_y += GRAVITY;
-                    println!("obstacle.y_bottom: {}, obstacle.y_top: {}", obstacle.y_bottom, obstacle.y_top);
+                    obstacle.y_bottom += GRAVITY * 3.0;
+                    obstacle.y_top += GRAVITY * 3.0;
+                    obstacle.velocity_y += GRAVITY * 3.0;
+                    // println!("obstacle.y_bottom: {}, obstacle.y_top: {}", obstacle.y_bottom, obstacle.y_top);
                 }
             }
         }
@@ -92,6 +92,19 @@ impl GlobalCommand for CheckGameOver {
     }
 }
 
+pub struct ApplyFriction;
+
+impl GlobalCommand for ApplyFriction {
+    fn execute(&self, context: &mut Context) {
+        if context.player.direction == Direction::Left {
+            context.player.x -= context.player.vx;
+        } else {
+            context.player.x += context.player.vx;
+        }
+        context.player.y += context.player.vy;
+    }
+}
+
 pub fn initialize_global_command_map() -> HashMap<String, Rc<RefCell<dyn GlobalCommand>>> {
     let mut global_commands: HashMap<String, Rc<RefCell<dyn GlobalCommand>>> = HashMap::new();
     global_commands.insert("JumpingObstacles".to_string(), Rc::new(RefCell::new(JumpingObstacles)));
@@ -99,6 +112,7 @@ pub fn initialize_global_command_map() -> HashMap<String, Rc<RefCell<dyn GlobalC
     global_commands.insert("VerticalBounds".to_string(), Rc::new(RefCell::new(VerticalBounds)));
     global_commands.insert("HorizontalBounds".to_string(), Rc::new(RefCell::new(HorizontalBounds)));
     global_commands.insert("CheckGameOver".to_string(), Rc::new(RefCell::new(CheckGameOver)));
+    global_commands.insert("ApplyFriction".to_string(), Rc::new(RefCell::new(ApplyFriction)));
 
 
 

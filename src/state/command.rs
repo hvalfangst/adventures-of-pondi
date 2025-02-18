@@ -22,9 +22,11 @@ impl Command for MoveLeft {
             context.player.obstacle_left = false;
 
             // Update velocity if no collision is detected
-            context.player.vx += ACCELERATION;
+            context.player.vx += ACCELERATION * 0.5;
             if context.player.vx > MAX_VELOCITY {
                 context.player.vx = MAX_VELOCITY;
+            } else {
+                context.player.vx *= 0.98;
             }
 
             context.player.last_key = Some(Key::A);
@@ -51,7 +53,7 @@ impl Command for MoveLeft {
         }
 
         // Move player based on current velocity
-        context.player.x -= context.player.vx;
+        // context.player.x -= context.player.vx;
     }
 }
 
@@ -65,9 +67,11 @@ impl Command for MoveRight {
             context.player.obstacle_right = false;
 
             // Update velocity if no collision is detected
-            context.player.vx += ACCELERATION;
+            context.player.vx += ACCELERATION * 0.5;
             if context.player.vx > MAX_VELOCITY {
                 context.player.vx = MAX_VELOCITY;
+            } else {
+                context.player.vx *= 0.98;
             }
 
             context.player.last_key = Some(Key::D);
@@ -92,9 +96,6 @@ impl Command for MoveRight {
             // Stop the player from moving right if colliding
             context.player.vx = 0.0;
         }
-
-        // Move player based on current velocity
-        context.player.x += context.player.vx;
     }
 }
 
@@ -111,7 +112,7 @@ pub fn check_collision(obstacles: &Vec<Obstacle>, sprites: &Sprites, player: &Pl
         } else {
             player.x + (sprites.player[player.right_increment].width as f32 / 1.5)
         };
-        println!("Checking collision: player_x: {}, obstacle.x_left: {}, obstacle.x_right: {}, player_y: {}, obstacle.y_bottom: {}", player_x, obstacle.x_left, obstacle.x_right, player.y, obstacle.y_bottom);
+        // println!("Checking collision: player_x: {}, obstacle.x_left: {}, obstacle.x_right: {}, player_y: {}, obstacle.y_bottom: {}", player_x, obstacle.x_left, obstacle.x_right, player.y, obstacle.y_bottom);
         if player_x > obstacle.x_left && player_x < obstacle.x_right && player.y >= obstacle.y_bottom {
             collision_id = Some(index);
             true
@@ -121,7 +122,7 @@ pub fn check_collision(obstacles: &Vec<Obstacle>, sprites: &Sprites, player: &Pl
     });
 
     if let Some(id) = collision_id {
-        println!("Collision detected at x: {}, y: {}, with obstacle id: {}", player.x, player.y, id);
+        // println!("Collision detected at x: {}, y: {}, with obstacle id: {}", player.x, player.y, id);
     }
 
     (collision, collision_id)
@@ -156,12 +157,12 @@ impl Command for Kick {
 
         // Check if the player is adjacent to an obstacle to the right
         if collision {
-            println!("Player is adjacent to an obstacle with id {} to the right.", id.unwrap());
+            // println!("Player is adjacent to an obstacle with id {} to the right.", id.unwrap());
             if context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability > 0 {
-                println!("Obstacle durability: {}", context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability);
+                // println!("Obstacle durability: {}", context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability);
                 context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability -= 1;
             } else {
-                println!("Obstacle durability: 0");
+                // println!("Obstacle durability: 0");
                 remove_box(context, id.unwrap());
             }
 
