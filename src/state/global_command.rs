@@ -19,11 +19,14 @@ impl GlobalCommand for ApplyGravity {
             context.player.vy += GRAVITY;
         }
 
+        let mut obstacle_landed = false;
+
         // Apply gravity to all obstacles which have falling boolean
         for obstacle in context.all_maps[context.current_map_index].obstacles.iter_mut() {
             if obstacle.active && obstacle.falling {
                 if obstacle.velocity_y >= 16.0 {
                     // println!("obstacle.velocity_y: {}", obstacle.velocity_y);
+                    obstacle_landed = true;
                     obstacle.falling = false;
                 } else {
                     obstacle.y_bottom += GRAVITY * 3.0;
@@ -32,6 +35,11 @@ impl GlobalCommand for ApplyGravity {
                     // println!("obstacle.y_bottom: {}, obstacle.y_top: {}", obstacle.y_bottom, obstacle.y_top);
                 }
             }
+        }
+
+        if obstacle_landed {
+            // Sort obstacles by DESC by y_bottom, meaning the highest obstacles will be put first in the vector (due to polar coordinates)
+            context.all_maps[context.current_map_index].obstacles.sort_by(|a, b| a.y_bottom.partial_cmp(&b.y_bottom).unwrap());
         }
     }
 }
