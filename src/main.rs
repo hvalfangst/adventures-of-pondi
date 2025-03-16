@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io;
-use std::io::BufRead;
+use std::io::{BufRead};
 use std::path::Path;
 
 use minifb::{Window, WindowOptions};
@@ -16,12 +16,17 @@ use crate::state::{Context, Map, Obstacle, ObstacleId, Viewport};
 use crate::state::command::initialize_command_map;
 use crate::state::global_command::initialize_global_command_map;
 use crate::state::player::Player;
+use rodio::{OutputStream, Sink};
 
 mod state;mod graphics;
 
 
 
 fn main() {
+    // Initialize the audio output stream and sink
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    let mut sink = Sink::try_new(&stream_handle).unwrap();
+
     let sprites = Sprites::new();
     let mut player = Player::new(1.0, 176.0);
     let commands = initialize_command_map();
@@ -111,10 +116,12 @@ fn main() {
         game_over_index: 0,
         viewport: Viewport::new(window_width as f32, window_height as f32),
         all_maps,
-        current_map_index: 0
+        current_map_index: 0,
+        footstep_index: 0,
+        footstep_active: false
     };
 
-    start_event_loop(context, commands, global_commands);
+    start_event_loop(context, commands, global_commands, &mut sink);
 }
 
 fn read_grid_from_file(filename: &str) -> io::Result<(Vec<Tile>, usize, usize)> {
@@ -179,14 +186,14 @@ fn extract_obstacles(grid: &Vec<Tile>, sort_by_y: bool) -> Vec<Obstacle> {
         }
     }
 
-    if sort_by_y {
-        sort_obstacles_by_y(&mut obstacles);
-    }
+    // if sort_by_y {
+    //     sort_obstacles_by_y(&mut obstacles);
+    // }
 
     obstacles
 }
 
-pub fn sort_obstacles_by_y(obstacles: &mut Vec<Obstacle>) -> &mut Vec<Obstacle> {
+pub fn sort_obstacles_by_y(mut obstacles: Vec<Obstacle>) -> Vec<Obstacle> {
         // Sort by Y position
         for i in 1..obstacles.len() {
             let mut j = i;

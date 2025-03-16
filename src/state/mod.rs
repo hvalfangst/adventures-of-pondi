@@ -1,7 +1,8 @@
+use std::io::BufReader;
 use std::time::Duration;
 
 use minifb::{Key, Window};
-
+use rodio::Source;
 use crate::graphics::sprites::Sprites;
 use crate::state::player::{Player, PlayerState};
 use crate::{sort_obstacles_by_y, Tile};
@@ -47,7 +48,7 @@ pub struct Obstacle {
     pub active: bool,    // If false, box is removed
     pub durability: u8,  // Health of the box
 }
-pub fn jump_obstacles(mut context: &mut Context) {
+pub fn jump_obstacles(mut context: &mut Context, sink: &mut rodio::Sink) {
 
     // Apply vertical velocity if jumping
     if context.player.is_jumping {
@@ -109,7 +110,18 @@ pub fn jump_obstacles(mut context: &mut Context) {
             context.player.on_ground = true;
             context.player.on_obstacle = false;
             context.player.is_jumping = false;
+
+            if context.player.state == PlayerState::InAir {
+                let file = std::fs::File::open("fall_mild.wav").unwrap();
+                let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(1000));
+
+                // Append the sound source to the audio sink for playback
+                let _result = sink.append(source);
+            }
+
             context.player.state = PlayerState::OnGround;
+
+
         } else {
             // player is in the air (not above any obstacle)
             context.player.on_ground = false;
@@ -159,24 +171,48 @@ impl Viewport {
     }
 }
 
-fn remove_box(context: &mut Context, box_index: usize) {
+fn remove_box(context: &mut Context, box_index: usize, sink: &mut rodio::Sink) {
+    println!("Removing box {}", box_index);
+    let mut to_remove = false;
     if context.all_maps[context.current_map_index].obstacles[box_index].active {
+        println!("Box is active");
         // Obtain the x_left and x_right values of the removed box
         let removed_box_x_left = context.all_maps[context.current_map_index].obstacles[box_index].x_left;
         let removed_box_x_right = context.all_maps[context.current_map_index].obstacles[box_index].x_right;
+        let removed_box_y_top = context.all_maps[context.current_map_index].obstacles[box_index].y_top;
+
+        println!("Box x_left: {}, x_right: {}", removed_box_x_left, removed_box_x_right);
 
         // Remove the box
-        context.all_maps[context.current_map_index].obstacles.remove(box_index);
+
+        println!("Box {} removed", box_index);
+
+        let file = std::fs::File::open("explosion.wav").unwrap();
+        let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(400));
+
+        // Append the sound source to the audio sink for playback
+        let _result = sink.append(source);
 
         // Shift all boxes above the removed box down by 16 pixels
-        for i in box_index..context.all_maps[context.current_map_index].obstacles.len() {
+        for i in 0..context.all_maps[context.current_map_index].obstacles.len() {
+            println!("Box id: {}", i);
+
             let obstacle = &mut context.all_maps[context.current_map_index].obstacles[i];
-            if obstacle.x_left >= removed_box_x_left && obstacle.x_right <= removed_box_x_right {
+            println!("Box {} x_left: {}, x_right: {}", i, obstacle.x_left, obstacle.x_right);
+            if obstacle.x_left >= removed_box_x_left && obstacle.x_right <= removed_box_x_right { //&& obstacle.y_top < removed_box_y_top {
                 obstacle.falling = true;
                 obstacle.velocity_y = 0.0;
-                // println!("Box {} is falling", i);
+                println!("Box {} is falling", i);
+                // Remove the box
+                to_remove = true;
+            } else {
+                println!("Box {} is not falling. obs.x_left: {} removed.x_left: {} obs.x_right {} removed.x_right {}", i, obstacle.x_left, removed_box_x_left, obstacle.x_right, removed_box_x_right);
             }
         }
+    }
+    if to_remove {
+        context.all_maps[context.current_map_index].obstacles.remove(box_index);
+        println!("Box {} removed", box_index);
     }
 }
 
@@ -206,5 +242,7 @@ pub struct Context<'a> {
     pub game_over_index: usize,
     pub viewport: Viewport,
     pub all_maps: Vec<Map<'a>>,
-    pub current_map_index: usize
+    pub current_map_index: usize,
+    pub footstep_index: usize,
+    pub footstep_active: bool
 }

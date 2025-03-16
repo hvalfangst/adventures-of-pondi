@@ -14,12 +14,9 @@ fn draw_player(context: &mut Context) {
 
     // Determine the current direction and action of the player
     let direction = context.player.direction;
-    let last_key = context.player.last_key.unwrap_or(Key::D);
 
     // Determine the sprite to draw
     let sprite_to_draw =
-
-
 
     if context.player.is_kicking {
         context.player.kick_frame_timer += 1;

@@ -14,20 +14,26 @@ use crate::state::global_command::GlobalCommand;
 use crate::state::input_handler::handle_user_input;
 use crate::state::update::update;
 
-pub fn start_event_loop(mut context: Context, commands: CommandMap, global_commands: HashMap<String, Rc<RefCell<dyn GlobalCommand>>>) {
+pub fn start_event_loop(mut context: Context, commands: CommandMap, global_commands: HashMap<String, Rc<RefCell<dyn GlobalCommand>>>, sink: &mut rodio::Sink) {
 
 
 
     // Variables for background sprite changing
     let mut last_grass_sprite_index_change = Instant::now();
     let mut last_sky_sprite_index_change = Instant::now();
+    let mut last_footstep_time = Instant::now();
 
     // Main event loop: runs as long as the window is open and the Escape key is not pressed
     while context.window.is_open() && !context.window.is_key_down(Key::Escape) {
         let start = Instant::now();
 
+        if last_footstep_time.elapsed() >= std::time::Duration::from_millis(500) {
+            context.footstep_active = true;
+            last_footstep_time = Instant::now();
+        }
 
-        handle_user_input(&mut context, &commands, &global_commands);
+
+        handle_user_input(&mut context, &commands, &global_commands, sink);
 
         // Change grass sprite every second - alternate between 0 and 1
         if last_grass_sprite_index_change.elapsed() >= BACKGROUND_CHANGE_INTERVAL {

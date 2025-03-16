@@ -178,4 +178,19 @@ pub fn draw_sprite(x: usize, y: usize, sprite: &Sprite, window_buffer: &mut [u32
     }
 }
 
+/// Sets a pixel in the window buffer at the specified coordinates.
+///
+/// # Parameters
+/// - `x`: The x-coordinate where the pixel will be set.
+/// - `y`: The y-coordinate where the pixel will be set.
+/// - `color`: The color of the pixel in ARGB format.
+/// - `window_buffer`: A mutable slice of `u32` representing the pixels of the window buffer.
+/// - `window_width`: The width of the window in pixels.
+pub fn set_pixel(x: usize, y: usize, color: u32, window_buffer: &mut [u32], window_width: usize) {
+    let window_pixel_index = y * window_width + x;
+    if window_pixel_index < window_buffer.len() {
+        window_buffer[window_pixel_index] = color;
+    }
+}
+
 

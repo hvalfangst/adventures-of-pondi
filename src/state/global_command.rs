@@ -1,19 +1,21 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::io::BufReader;
 use std::rc::Rc;
 use std::thread::sleep;
+use rodio::{Sink, Source};
 use crate::graphics::renderer::render;
 use crate::state::{Context, Direction, GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND};
 use crate::state::player::Player;
 use crate::state::update::update;
 pub trait GlobalCommand {
-    fn execute(&self, context: &mut Context);
+    fn execute(&self, context: &mut Context, sink: &mut Sink);
 }
 
 pub struct ApplyGravity;
 
 impl GlobalCommand for ApplyGravity {
-    fn execute(&self, context: &mut Context) {
+    fn execute(&self, context: &mut Context, sink: &mut Sink) {
         // Apply gravity to the player
         if !context.player.on_ground && !context.player.on_obstacle {
             context.player.vy += GRAVITY;
@@ -38,6 +40,11 @@ impl GlobalCommand for ApplyGravity {
         }
 
         if obstacle_landed {
+            let file = std::fs::File::open("down.wav").unwrap();
+            let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(1000));
+
+            // Append the sound source to the audio sink for playback
+            let _result = sink.append(source);
             // Sort obstacles by DESC by y_bottom, meaning the highest obstacles will be put first in the vector (due to polar coordinates)
             context.all_maps[context.current_map_index].obstacles.sort_by(|a, b| a.y_bottom.partial_cmp(&b.y_bottom).unwrap());
         }
@@ -47,15 +54,15 @@ impl GlobalCommand for ApplyGravity {
 pub struct JumpingObstacles;
 
 impl GlobalCommand for JumpingObstacles {
-    fn execute(&self, context: &mut Context) {
-        jump_obstacles(context);
+    fn execute(&self, context: &mut Context, sink: &mut Sink) {
+        jump_obstacles(context, sink);
     }
 }
 
 pub struct VerticalBounds;
 
 impl GlobalCommand for VerticalBounds {
-    fn execute(&self, context: &mut Context) {
+    fn execute(&self, context: &mut Context, sink: &mut Sink) {
         // Prevent the player from moving out vertical (y) bounds
         if context.player.y <= 40.0 {
             context.player.on_ground = false;
@@ -67,7 +74,7 @@ impl GlobalCommand for VerticalBounds {
 pub struct HorizontalBounds;
 
 impl GlobalCommand for HorizontalBounds {
-    fn execute(&self, context: &mut Context) {
+    fn execute(&self, context: &mut Context, sink: &mut Sink) {
         // Prevent the player from moving out horizontal (x) bounds
         if context.player.x < LOWER_BOUND {
             context.player.x = LOWER_BOUND;
@@ -83,7 +90,7 @@ impl GlobalCommand for HorizontalBounds {
 pub struct CheckGameOver;
 
 impl GlobalCommand for CheckGameOver {
-    fn execute(&self, context: &mut Context) {
+    fn execute(&self, context: &mut Context, sink: &mut Sink) {
         if context.player.game_over {
             println!("Game Over!");
 
@@ -103,7 +110,7 @@ impl GlobalCommand for CheckGameOver {
 pub struct ApplyFriction;
 
 impl GlobalCommand for ApplyFriction {
-    fn execute(&self, context: &mut Context) {
+    fn execute(&self, context: &mut Context, sink: &mut Sink) {
         if context.player.direction == Direction::Left {
             context.player.x -= context.player.vx;
         } else {
