@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io;
-use std::io::{BufRead};
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 
 use minifb::{Window, WindowOptions};
@@ -12,11 +12,11 @@ use crate::{
     state::event_loop::start_event_loop
 };
 use crate::graphics::constants::{SCALED_WINDOW_HEIGHT, SCALED_WINDOW_WIDTH};
-use crate::state::{Context, Map, Obstacle, ObstacleId, Viewport};
+use crate::state::{GameState, Map, Obstacle, ObstacleId, Viewport};
 use crate::state::command::initialize_command_map;
 use crate::state::global_command::initialize_global_command_map;
 use crate::state::player::Player;
-use rodio::{OutputStream, Sink};
+use rodio::{Decoder, OutputStream, Sink};
 
 mod state;mod graphics;
 
@@ -103,7 +103,9 @@ fn main() {
 
     let all_maps = vec![map_one, map_two, map_three];
 
-    let context = Context {
+    let sounds: Vec<Vec<u8>> = load_sounds();
+
+    let game_state = GameState {
         player,
         sprites,
         window_buffer: &mut window_buffer,
@@ -118,10 +120,35 @@ fn main() {
         all_maps,
         current_map_index: 0,
         footstep_index: 0,
-        footstep_active: false
+        footstep_active: false,
+        sounds
     };
 
-    start_event_loop(context, commands, global_commands, &mut sink);
+    start_event_loop(game_state, commands, global_commands, &mut sink);
+}
+
+fn load_sound(path: &str) -> Vec<u8> {
+    let mut file = File::open(path).expect("Failed to open sounds file");
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer).expect("Failed to read file");
+    buffer
+}
+
+
+fn load_sounds() -> Vec<Vec<u8>> {
+    let mut sounds = Vec::new();
+    sounds.push(load_sound("assets/sounds/walk_1.wav"));
+    sounds.push(load_sound("assets/sounds/walk_2.wav"));
+    sounds.push(load_sound("assets/sounds/walk_3.wav"));
+    sounds.push(load_sound("assets/sounds/walk_4.wav"));
+    sounds.push(load_sound("assets/sounds/jump.wav"));
+    sounds.push(load_sound("assets/sounds/fall_mild.wav"));
+    sounds.push(load_sound("assets/sounds/fall_heavy.wav"));
+    sounds.push(load_sound("assets/sounds/down.wav"));
+    sounds.push(load_sound("assets/sounds/explosion.wav"));
+    sounds.push(load_sound("assets/sounds/kick.wav"));
+    sounds.push(load_sound("assets/sounds/kick_box.wav"));
+    sounds
 }
 
 fn read_grid_from_file(filename: &str) -> io::Result<(Vec<Tile>, usize, usize)> {

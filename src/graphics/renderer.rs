@@ -1,12 +1,12 @@
 
-use crate::state::Context;
+use crate::state::GameState;
 
-pub fn render(context: &mut Context) {
+pub fn render(game_state: &mut GameState) {
     // Scale the buffer to the screen resolution
-    scale_buffer(&context.window_buffer, &mut context.scaled_buffer, context.all_maps[context.current_map_index].width, context.all_maps[context.current_map_index].height, context.window_width, context.window_height);
+    scale_buffer(&game_state.window_buffer, &mut game_state.scaled_buffer, game_state.all_maps[game_state.current_map_index].width, game_state.all_maps[game_state.current_map_index].height, game_state.window_width, game_state.window_height);
 
     // Draw the scaled buffer onto the window
-    context.window.update_with_buffer(&context.scaled_buffer, context.window_width, context.window_height).unwrap();
+    game_state.window.update_with_buffer(&game_state.scaled_buffer, game_state.window_width, game_state.window_height).unwrap();
 }
 
 // Function to scale a buffer to a different resolution

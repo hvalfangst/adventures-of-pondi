@@ -1,4 +1,6 @@
-use std::io::BufReader;
+use std::fs::File;
+use std::io::{BufReader, Cursor};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use minifb::{Key, Window};
@@ -27,6 +29,19 @@ const LOWER_BOUND: f32 = 0.0;
 const UPPER_BOUND: f32 = 225.0;
 const KICK_FRAME_DURATION: u32 = 8;
 
+const WALK_SOUND_1: usize = 0;
+const WALK_SOUND_2: usize = 1;
+const WALK_SOUND_3: usize = 2;
+const WALK_SOUND_4: usize = 3;
+const JUMP_SOUND: usize = 4;
+const FALL_MILD_SOUND: usize = 5;
+const FALL_HEAVY_SOUND: usize = 6;
+const DOWN_SOUND: usize = 7;
+const EXPLOSION_SOUND: usize = 8;
+const KICK_SOUND: usize = 9;
+const KICK_BOX_SOUND: usize = 10;
+
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Right,
@@ -48,54 +63,54 @@ pub struct Obstacle {
     pub active: bool,    // If false, box is removed
     pub durability: u8,  // Health of the box
 }
-pub fn jump_obstacles(mut context: &mut Context, sink: &mut rodio::Sink) {
+pub fn jump_obstacles(mut game_state: &mut GameState, sink: &mut rodio::Sink) {
 
     // Apply vertical velocity if jumping
-    if context.player.is_jumping {
-        context.player.y += context.player.vy;
+    if game_state.player.is_jumping {
+        game_state.player.y += game_state.player.vy;
     }
 
-    // Check if context.player is almost on the ground
-    if context.player.y >= 140.0 && context.player.y <= 160.0 {
-        context.player.almost_ground = true;
+    // Check if game_state.player is almost on the ground
+    if game_state.player.y >= 140.0 && game_state.player.y <= 160.0 {
+        game_state.player.almost_ground = true;
     } else {
-        context.player.almost_ground = false;
+        game_state.player.almost_ground = false;
     }
 
     let mut on_any_obstacle = false;
 
     // Check for each obstacle
-    for obstacle in context.all_maps[context.current_map_index].obstacles.iter() {
+    for obstacle in game_state.all_maps[game_state.current_map_index].obstacles.iter() {
 
         if obstacle.active == false {
             continue;
         }
 
-        if context.player.x + 10.0 > obstacle.x_left && context.player.x + 5.0 < obstacle.x_right {
-            if context.player.y <= obstacle.y_bottom && context.player.y >= obstacle.y_top {
-                 // println!("context.player.y: {}, obstacle.y_bottom: {}, obstacle.y_top: {}", context.player.y, obstacle.y_bottom, obstacle.y_top);
-                if context.player.state != PlayerState::OnObstacle {
+        if game_state.player.x + 10.0 > obstacle.x_left && game_state.player.x + 5.0 < obstacle.x_right {
+            if game_state.player.y <= obstacle.y_bottom && game_state.player.y >= obstacle.y_top {
+                 // println!("game_state.player.y: {}, obstacle.y_bottom: {}, obstacle.y_top: {}", game_state.player.y, obstacle.y_bottom, obstacle.y_top);
+                if game_state.player.state != PlayerState::OnObstacle {
                     // player just landed on the obstacle
-                    context.player.y = obstacle.y_bottom - 1.0;
-                    context.player.on_obstacle = true;
-                    context.player.on_ground = false;
-                    context.player.is_jumping = false;
-                    context.player.state = PlayerState::OnObstacle;
-                    context.player.vy = 0.0;
+                    game_state.player.y = obstacle.y_bottom - 1.0;
+                    game_state.player.on_obstacle = true;
+                    game_state.player.on_ground = false;
+                    game_state.player.is_jumping = false;
+                    game_state.player.state = PlayerState::OnObstacle;
+                    game_state.player.vy = 0.0;
                 } else {
-                    // context.player is already on the obstacle
-                    context.player.on_obstacle = true;
-                    context.player.on_ground = false;
+                    // game_state.player is already on the obstacle
+                    game_state.player.on_obstacle = true;
+                    game_state.player.on_ground = false;
                 }
                 on_any_obstacle = true;
                 break;
-            } else if context.player.y < obstacle.y_top {
+            } else if game_state.player.y < obstacle.y_top {
                 // player is above the obstacle but not touching it
-                context.player.on_ground = false;
-                context.player.on_obstacle = false;
-                context.player.above_obstacle = true;
-                context.player.state = PlayerState::InAir;
-                context.player.is_jumping = true;
+                game_state.player.on_ground = false;
+                game_state.player.on_obstacle = false;
+                game_state.player.above_obstacle = true;
+                game_state.player.state = PlayerState::InAir;
+                game_state.player.is_jumping = true;
                 on_any_obstacle = true;
                 break;
             }
@@ -103,47 +118,50 @@ pub fn jump_obstacles(mut context: &mut Context, sink: &mut rodio::Sink) {
     }
 
     if !on_any_obstacle {
-        if context.player.y >= GROUND {
+        if game_state.player.y >= GROUND {
             // player is on the ground (not on an obstacle)
-            context.player.y = GROUND;
-            context.player.vy = 0.0;
-            context.player.on_ground = true;
-            context.player.on_obstacle = false;
-            context.player.is_jumping = false;
+            game_state.player.y = GROUND;
+            game_state.player.vy = 0.0;
+            game_state.player.on_ground = true;
+            game_state.player.on_obstacle = false;
+            game_state.player.is_jumping = false;
 
-            if context.player.state == PlayerState::InAir {
-                let file = std::fs::File::open("fall_mild.wav").unwrap();
-                let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(1000));
+            if game_state.player.state == PlayerState::InAir {
+                let file = &game_state.sounds[FALL_MILD_SOUND]; // Get the raw sound data (Vec<u8>)
+                let cursor = Cursor::new(file.clone()); // Clone to create an owned Cursor<Vec<u8>>
 
-                // Append the sound source to the audio sink for playback
-                let _result = sink.append(source);
+                let source = rodio::Decoder::new(BufReader::new(cursor))
+                    .unwrap()
+                    .take_duration(std::time::Duration::from_millis(1000));
+
+                sink.append(source); // Play the sound
             }
 
-            context.player.state = PlayerState::OnGround;
+            game_state.player.state = PlayerState::OnGround;
 
 
         } else {
             // player is in the air (not above any obstacle)
-            context.player.on_ground = false;
-            context.player.on_obstacle = false;
-            context.player.above_obstacle = false;
-            context.player.state = PlayerState::InAir;
-            context.player.is_jumping = true;
+            game_state.player.on_ground = false;
+            game_state.player.on_obstacle = false;
+            game_state.player.above_obstacle = false;
+            game_state.player.state = PlayerState::InAir;
+            game_state.player.is_jumping = true;
         }
     }
 }
 
 
-fn apply_friction(mut context: &mut Context) {
-    if context.player.vx > 0.0 {
-        context.player.vx -= FRICTION;
-        if context.player.vx < 0.0 {
-            context.player.vx = 0.0;
+fn apply_friction(mut game_state: &mut GameState) {
+    if game_state.player.vx > 0.0 {
+        game_state.player.vx -= FRICTION;
+        if game_state.player.vx < 0.0 {
+            game_state.player.vx = 0.0;
         }
-    } else if context.player.vx < 0.0 {
-        context.player.vx += FRICTION;
-        if context.player.vx > 0.0 {
-            context.player.vx = 0.0;
+    } else if game_state.player.vx < 0.0 {
+        game_state.player.vx += FRICTION;
+        if game_state.player.vx > 0.0 {
+            game_state.player.vx = 0.0;
         }
     }
 }
@@ -171,15 +189,15 @@ impl Viewport {
     }
 }
 
-fn remove_box(context: &mut Context, box_index: usize, sink: &mut rodio::Sink) {
+fn remove_box(game_state: &mut GameState, box_index: usize, sink: &mut rodio::Sink) {
     println!("Removing box {}", box_index);
     let mut to_remove = false;
-    if context.all_maps[context.current_map_index].obstacles[box_index].active {
+    if game_state.all_maps[game_state.current_map_index].obstacles[box_index].active {
         println!("Box is active");
         // Obtain the x_left and x_right values of the removed box
-        let removed_box_x_left = context.all_maps[context.current_map_index].obstacles[box_index].x_left;
-        let removed_box_x_right = context.all_maps[context.current_map_index].obstacles[box_index].x_right;
-        let removed_box_y_top = context.all_maps[context.current_map_index].obstacles[box_index].y_top;
+        let removed_box_x_left = game_state.all_maps[game_state.current_map_index].obstacles[box_index].x_left;
+        let removed_box_x_right = game_state.all_maps[game_state.current_map_index].obstacles[box_index].x_right;
+        let removed_box_y_top = game_state.all_maps[game_state.current_map_index].obstacles[box_index].y_top;
 
         println!("Box x_left: {}, x_right: {}", removed_box_x_left, removed_box_x_right);
 
@@ -187,17 +205,20 @@ fn remove_box(context: &mut Context, box_index: usize, sink: &mut rodio::Sink) {
 
         println!("Box {} removed", box_index);
 
-        let file = std::fs::File::open("explosion.wav").unwrap();
-        let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(400));
+        let file = &game_state.sounds[KICK_BOX_SOUND]; // Get the raw sound data (Vec<u8>)
+        let cursor = Cursor::new(file.clone()); // Clone to create an owned Cursor<Vec<u8>>
 
-        // Append the sound source to the audio sink for playback
-        let _result = sink.append(source);
+        let source = rodio::Decoder::new(BufReader::new(cursor))
+            .unwrap()
+            .take_duration(std::time::Duration::from_millis(1000));
+
+        sink.append(source); // Play the sound
 
         // Shift all boxes above the removed box down by 16 pixels
-        for i in 0..context.all_maps[context.current_map_index].obstacles.len() {
+        for i in 0..game_state.all_maps[game_state.current_map_index].obstacles.len() {
             println!("Box id: {}", i);
 
-            let obstacle = &mut context.all_maps[context.current_map_index].obstacles[i];
+            let obstacle = &mut game_state.all_maps[game_state.current_map_index].obstacles[i];
             println!("Box {} x_left: {}, x_right: {}", i, obstacle.x_left, obstacle.x_right);
             if obstacle.x_left >= removed_box_x_left && obstacle.x_right <= removed_box_x_right { //&& obstacle.y_top < removed_box_y_top {
                 obstacle.falling = true;
@@ -211,7 +232,7 @@ fn remove_box(context: &mut Context, box_index: usize, sink: &mut rodio::Sink) {
         }
     }
     if to_remove {
-        context.all_maps[context.current_map_index].obstacles.remove(box_index);
+        game_state.all_maps[game_state.current_map_index].obstacles.remove(box_index);
         println!("Box {} removed", box_index);
     }
 }
@@ -229,7 +250,7 @@ pub struct Map<'a> {
     pub transition_y: f32
 }
 
-pub struct Context<'a> {
+pub struct GameState<'a> {
     pub player: Player,
     pub sprites: Sprites,
     pub window_buffer: &'a mut Vec<u32>,
@@ -244,5 +265,7 @@ pub struct Context<'a> {
     pub all_maps: Vec<Map<'a>>,
     pub current_map_index: usize,
     pub footstep_index: usize,
-    pub footstep_active: bool
+    pub footstep_active: bool,
+    pub sounds: Vec<Vec<u8>> // Store raw sounds data
 }
+

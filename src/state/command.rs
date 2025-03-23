@@ -1,121 +1,117 @@
 use std::collections::HashMap;
-use std::io::BufReader;
+use std::io::{BufReader, Cursor};
 use std::sync::Arc;
 
 use minifb::Key;
 use rodio::{Sink, Source};
 use crate::graphics::sprites::Sprites;
 use crate::sort_obstacles_by_y;
-use crate::state::{ACCELERATION, Context, JUMP_VELOCITY, MAX_VELOCITY, Obstacle, remove_box};
+use crate::state::{ACCELERATION, GameState, JUMP_VELOCITY, MAX_VELOCITY, Obstacle, remove_box, KICK_SOUND, KICK_BOX_SOUND, JUMP_SOUND, WALK_SOUND_1, WALK_SOUND_2, WALK_SOUND_3, WALK_SOUND_4};
 use crate::state::Direction::{Left, Right};
 use crate::state::player::Player;
 
 pub trait Command {
-    fn execute(&self, context: &mut Context, sink: &mut Sink);
+    fn execute(&self, game_state: &mut GameState, sink: &mut Sink);
 }
 
 pub struct MoveLeft;
 impl Command for MoveLeft {
-    fn execute(&self, context: &mut Context, sink: &mut Sink) {
-        let (obstacle_left, _id) = check_collision(context.all_maps[context.current_map_index].obstacles, &context.sprites, &context.player, true);
+    fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
+        let (obstacle_left, _id) = check_collision(game_state.all_maps[game_state.current_map_index].obstacles, &game_state.sprites, &game_state.player, true);
 
         if !obstacle_left {
-            context.player.obstacle_left = false;
+            game_state.player.obstacle_left = false;
 
             // Update velocity if no collision is detected
-            context.player.vx += ACCELERATION * 0.5;
-            if context.player.vx > MAX_VELOCITY {
-                context.player.vx = MAX_VELOCITY;
+            game_state.player.vx += ACCELERATION * 0.5;
+            if game_state.player.vx > MAX_VELOCITY {
+                game_state.player.vx = MAX_VELOCITY;
             } else {
-                context.player.vx *= 0.98;
+                game_state.player.vx *= 0.98;
             }
 
-            context.player.last_key = Some(Key::A);
-            context.player.direction = Left;
+            game_state.player.last_key = Some(Key::A);
+            game_state.player.direction = Left;
 
             // Initialize a new field to track the frame count
-            context.player.left_increment_frame_count += 1;
+            game_state.player.left_increment_frame_count += 1;
 
-            if context.player.left_increment_frame_count >= 3 {
-                context.player.left_increment_frame_count = 0; // Reset the frame count
+            if game_state.player.left_increment_frame_count >= 3 {
+                game_state.player.left_increment_frame_count = 0; // Reset the frame count
 
-                match context.player.left_increment {
+                match game_state.player.left_increment {
                     7 => {
-                        context.player.left_increment = 4;
+                        game_state.player.left_increment = 4;
                     }
                     _ => {
-                        context.player.left_increment += 1;
+                        game_state.player.left_increment += 1;
                     }
                 };
             }
         } else {
             // Stop the player from moving left if colliding
-            context.player.vx = 0.0;
+            game_state.player.vx = 0.0;
         }
 
         // Move player based on current velocity
-        // context.player.x -= context.player.vx;
+        // game_state.player.x -= game_state.player.vx;
     }
 }
 
 pub struct MoveRight;
 
 impl Command for MoveRight {
-    fn execute(&self, context: &mut Context, sink: &mut Sink) {
-        let (obstacle_right, _id) = check_collision(context.all_maps[context.current_map_index].obstacles, &context.sprites, &context.player, false);
+    fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
+        let (obstacle_right, _id) = check_collision(game_state.all_maps[game_state.current_map_index].obstacles, &game_state.sprites, &game_state.player, false);
 
         if !obstacle_right {
-            context.player.obstacle_right = false;
+            game_state.player.obstacle_right = false;
 
             // Update velocity if no collision is detected
-            context.player.vx += ACCELERATION * 0.5;
-            if context.player.vx > MAX_VELOCITY {
-                context.player.vx = MAX_VELOCITY;
+            game_state.player.vx += ACCELERATION * 0.5;
+            if game_state.player.vx > MAX_VELOCITY {
+                game_state.player.vx = MAX_VELOCITY;
             } else {
-                context.player.vx *= 0.98;
+                game_state.player.vx *= 0.98;
             }
 
-            context.player.last_key = Some(Key::D);
-            context.player.direction = Right;
+            game_state.player.last_key = Some(Key::D);
+            game_state.player.direction = Right;
 
             // Initialize a new field to track the frame count
-            context.player.right_increment_frame_count += 1;
+            game_state.player.right_increment_frame_count += 1;
 
-            if context.player.right_increment_frame_count >= 3 {
-                context.player.right_increment_frame_count = 0; // Reset the frame count
+            if game_state.player.right_increment_frame_count >= 3 {
+                game_state.player.right_increment_frame_count = 0; // Reset the frame count
 
-                match context.player.right_increment {
+                match game_state.player.right_increment {
                     3 => {
-                        context.player.right_increment = 0;
+                        game_state.player.right_increment = 0;
                     }
                     _ => {
-                        context.player.right_increment += 1;
+                        game_state.player.right_increment += 1;
                     }
                 }
             }
         } else {
             // Stop the player from moving right if colliding
-            context.player.vx = 0.0;
+            game_state.player.vx = 0.0;
         }
 
-        if context.footstep_active {
-            if context.footstep_index == 4 { context.footstep_index = 0; }
-            else { context.footstep_index += 1; }
+        if game_state.footstep_active {
+            if game_state.footstep_index == 4 { game_state.footstep_index = 0; }
+            else { game_state.footstep_index += 1; }
 
-            let file_path = match context.footstep_index {
-                0 => "foot_step_1.wav",
-                1 => "foot_step_2.wav",
-                2 => "foot_step_3.wav",
-                _ => "foot_step_4.wav",
+            let sound_index = match game_state.footstep_index {
+                0 => WALK_SOUND_1,
+                1 => WALK_SOUND_2,
+                2 => WALK_SOUND_3,
+                _ => WALK_SOUND_4,
             };
 
-            let file = std::fs::File::open(file_path).unwrap();
-            let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(125));
-
-            // Append the sound source to the audio sink for playback
-            let _result = sink.append(source);
-
-
+            // let file = &game_state.sounds[sound_index];;
+            // let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(125));
+            // let _result = sink.append(source);
         }
 
 
@@ -165,20 +161,25 @@ pub fn check_collision(obstacles: &Vec<Obstacle>, sprites: &Sprites, player: &Pl
 pub struct Jump;
 
 impl Command for Jump {
-    fn execute(&self, context: &mut Context, sink: &mut Sink) {
+    fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
 
-        if !context.player.is_jumping && (context.player.on_ground || context.player.on_obstacle) {
-            context.player.vy = JUMP_VELOCITY;
-            context.player.on_ground = false;
-            context.player.on_obstacle = false;
-            context.player.is_jumping = true;
-            context.player.last_key = Some(Key::Space);
+        if !game_state.player.is_jumping && (game_state.player.on_ground || game_state.player.on_obstacle) {
+            game_state.player.vy = JUMP_VELOCITY;
+            game_state.player.on_ground = false;
+            game_state.player.on_obstacle = false;
+            game_state.player.is_jumping = true;
+            game_state.player.last_key = Some(Key::Space);
 
-            let file = std::fs::File::open("jump.wav").unwrap();
-            let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(1000));
 
-            // Append the sound source to the audio sink for playback
-            let _result = sink.append(source);
+            let file = &game_state.sounds[JUMP_SOUND]; // Get the raw sound data (Vec<u8>)
+            let cursor = Cursor::new(file.clone()); // Clone to create an owned Cursor<Vec<u8>>
+
+            let source = rodio::Decoder::new(BufReader::new(cursor))
+                .unwrap()
+                .take_duration(std::time::Duration::from_millis(1000));
+
+            sink.append(source); // Play the sound
+
         }
     }
 }
@@ -186,40 +187,46 @@ impl Command for Jump {
 pub struct Kick;
 
 impl Command for Kick {
-    fn execute(&self, context: &mut Context, sink: &mut Sink) {
-        context.player.is_kicking = true;
-        context.player.kick_frame = 0;
-        context.player.kick_frame_timer = 0;
+    fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
+        game_state.player.is_kicking = true;
+        game_state.player.kick_frame = 0;
+        game_state.player.kick_frame_timer = 0;
         // TODO: Need to fix this as it currently fucks up everything
 
-        // let sorted_obstacles = sort_obstacles_by_y(context.all_maps[context.current_map_index].obstacles);
+        // let sorted_obstacles = sort_obstacles_by_y(game_state.all_maps[game_state.current_map_index].obstacles);
 
-        let (collision, id) = check_collision(context.all_maps[context.current_map_index].obstacles, &context.sprites, &context.player, context.player.direction == Left);
+        let (collision, id) = check_collision(game_state.all_maps[game_state.current_map_index].obstacles, &game_state.sprites, &game_state.player, game_state.player.direction == Left);
 
         // Check if the player is adjacent to an obstacle to the right
         if collision {
 
-            let file = std::fs::File::open("kick_box.wav").unwrap();
-            let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(1000));
+            let file = &game_state.sounds[KICK_BOX_SOUND]; // Get the raw sound data (Vec<u8>)
+            let cursor = Cursor::new(file.clone()); // Clone to create an owned Cursor<Vec<u8>>
 
-            // Append the sound source to the audio sink for playback
-            let _result = sink.append(source);
+            let source = rodio::Decoder::new(BufReader::new(cursor))
+                .unwrap()
+                .take_duration(std::time::Duration::from_millis(1000));
+
+            sink.append(source); // Play the sound
 
             // println!("Player is adjacent to an obstacle with id {} to the right.", id.unwrap());
-            if context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability > 0 {
-                // println!("Obstacle durability: {}", context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability);
-                context.all_maps[context.current_map_index].obstacles[id.unwrap()].durability -= 1;
+            if game_state.all_maps[game_state.current_map_index].obstacles[id.unwrap()].durability > 0 {
+                // println!("Obstacle durability: {}", game_state.all_maps[game_state.current_map_index].obstacles[id.unwrap()].durability);
+                game_state.all_maps[game_state.current_map_index].obstacles[id.unwrap()].durability -= 1;
             } else {
                 // println!("Obstacle durability: 0");
-                remove_box(context, id.unwrap(), sink);
+                remove_box(game_state, id.unwrap(), sink);
             }
 
         } else {
-            let file = std::fs::File::open("kick.wav").unwrap();
-            let source = rodio::Decoder::new(BufReader::new(file)).unwrap().take_duration(std::time::Duration::from_millis(1000));
+            let file = &game_state.sounds[KICK_SOUND]; // Get the raw sound data (Vec<u8>)
+            let cursor = Cursor::new(file.clone()); // Clone to create an owned Cursor<Vec<u8>>
 
-            // Append the sound source to the audio sink for playback
-            let _result = sink.append(source);
+            let source = rodio::Decoder::new(BufReader::new(cursor))
+                .unwrap()
+                .take_duration(std::time::Duration::from_millis(1000));
+
+            sink.append(source); // Play the sound
         }
     }
 }
