@@ -1,9 +1,6 @@
-use minifb::Key;
-
 use crate::graphics::sprites::draw_sprite;
-use crate::state::*;
 use crate::state::Direction::{Left, Right};
-use crate::TileType;
+use crate::state::*;
 
 pub fn update(game_state: &mut GameState) {
     draw_game_world(game_state);

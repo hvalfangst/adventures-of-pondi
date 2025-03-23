@@ -2,13 +2,12 @@ use std::collections::HashMap;
 use std::io::{BufReader, Cursor};
 use std::sync::Arc;
 
+use crate::graphics::sprites::Sprites;
+use crate::state::player::Player;
+use crate::state::Direction::{Left, Right};
+use crate::state::{remove_box, GameState, Obstacle, ACCELERATION, JUMP_SOUND, JUMP_VELOCITY, KICK_BOX_SOUND, KICK_SOUND, MAX_VELOCITY, WALK_SOUND_1, WALK_SOUND_2, WALK_SOUND_3, WALK_SOUND_4};
 use minifb::Key;
 use rodio::{Sink, Source};
-use crate::graphics::sprites::Sprites;
-use crate::sort_obstacles_by_y;
-use crate::state::{ACCELERATION, GameState, JUMP_VELOCITY, MAX_VELOCITY, Obstacle, remove_box, KICK_SOUND, KICK_BOX_SOUND, JUMP_SOUND, WALK_SOUND_1, WALK_SOUND_2, WALK_SOUND_3, WALK_SOUND_4};
-use crate::state::Direction::{Left, Right};
-use crate::state::player::Player;
 
 pub trait Command {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink);

@@ -1,22 +1,22 @@
 use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, Read};
 use std::path::Path;
 
 use minifb::{Window, WindowOptions};
 use winit::event_loop::EventLoop;
 use winit::monitor::MonitorHandle;
 
+use crate::graphics::constants::{SCALED_WINDOW_HEIGHT, SCALED_WINDOW_WIDTH};
+use crate::state::command::initialize_command_map;
+use crate::state::global_command::initialize_global_command_map;
+use crate::state::player::Player;
+use crate::state::{GameState, Map, Obstacle, ObstacleId, Viewport};
 use crate::{
     graphics::sprites::Sprites,
     state::event_loop::start_event_loop
 };
-use crate::graphics::constants::{SCALED_WINDOW_HEIGHT, SCALED_WINDOW_WIDTH};
-use crate::state::{GameState, Map, Obstacle, ObstacleId, Viewport};
-use crate::state::command::initialize_command_map;
-use crate::state::global_command::initialize_global_command_map;
-use crate::state::player::Player;
-use rodio::{Decoder, OutputStream, Sink};
+use rodio::{OutputStream, Sink};
 
 mod state;mod graphics;
 

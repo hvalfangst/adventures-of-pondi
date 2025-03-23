@@ -1,6 +1,6 @@
-# Adventures of Pondi
+# Age of Panda
 
-2D platformer game programmed in Rust
+2D game programmed in Rust
 
 ![screenshot](assets/screenshot.png)
 
