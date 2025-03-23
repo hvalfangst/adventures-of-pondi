@@ -6,17 +6,14 @@ use std::time::Instant;
 
 use minifb::Key;
 
-use crate::graphics::renderer::render;
+use crate::graphics::renderer::render_pixel_buffer;
 use crate::state::{BACKGROUND_CHANGE_INTERVAL, GameState};
-use crate::state::command::CommandMap;
+use crate::state::core_logic::{execute_core_logic, CoreLogic};
 use crate::state::FRAME_DURATION;
-use crate::state::global_command::GlobalCommand;
-use crate::state::input_handler::handle_user_input;
-use crate::state::update::update;
+use crate::state::update::update_pixel_buffer;
+use crate::state::input_logic::{handle_user_input, InputLogicMap};
 
-pub fn start_event_loop(mut game_state: GameState, commands: CommandMap, global_commands: HashMap<String, Rc<RefCell<dyn GlobalCommand>>>, sink: &mut rodio::Sink) {
-
-
+pub fn start_event_loop(mut game_state: GameState, input_logic_map: InputLogicMap, core_logic_map: HashMap<String, Rc<RefCell<dyn CoreLogic>>>, sink: &mut rodio::Sink) {
 
     // Variables for background sprite changing
     let mut last_grass_sprite_index_change = Instant::now();
@@ -32,8 +29,11 @@ pub fn start_event_loop(mut game_state: GameState, commands: CommandMap, global_
             last_footstep_time = Instant::now();
         }
 
+        // Handle basic user input, which influence the player's state such as velocity, direction, etc.
+        let any_key_pressed = handle_user_input(&mut game_state, &input_logic_map, sink);
 
-        handle_user_input(&mut game_state, &commands, &global_commands, sink);
+        // Process game logic such as obstacle detection, physics, sounds etc.
+        execute_core_logic(&mut game_state, &core_logic_map, sink, any_key_pressed);
 
         // Change grass sprite every second - alternate between 0 and 1
         if last_grass_sprite_index_change.elapsed() >= BACKGROUND_CHANGE_INTERVAL {
@@ -48,10 +48,10 @@ pub fn start_event_loop(mut game_state: GameState, commands: CommandMap, global_
         }
 
         // Update the pixel buffer with the current game state
-        update(&mut game_state);
+        update_pixel_buffer(&mut game_state);
 
         // Render the updated buffer
-        render(&mut game_state);
+        render_pixel_buffer(&mut game_state);
 
         // Maintain a frame rate of 60 fps
         let elapsed = start.elapsed();

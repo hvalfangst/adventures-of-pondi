@@ -1,20 +1,41 @@
 use std::collections::HashMap;
 use std::io::{BufReader, Cursor};
 use std::sync::Arc;
-
-use crate::graphics::sprites::Sprites;
-use crate::state::player::Player;
-use crate::state::Direction::{Left, Right};
 use crate::state::{remove_box, GameState, Obstacle, ACCELERATION, JUMP_SOUND, JUMP_VELOCITY, KICK_BOX_SOUND, KICK_SOUND, MAX_VELOCITY, WALK_SOUND_1, WALK_SOUND_2, WALK_SOUND_3, WALK_SOUND_4};
-use minifb::Key;
+use minifb::{Key, KeyRepeat};
 use rodio::{Sink, Source};
+use crate::graphics::sprites::Sprites;
+use crate::state::Direction::{Left, Right};
+use crate::state::player::Player;
 
-pub trait Command {
+pub fn handle_user_input(game_state: &mut GameState, commands: &InputLogicMap, sink: &mut Sink) -> bool {
+    let legal_keys = [Key::Space, Key::D, Key::A, Key::X];
+    let mut any_key_pressed = false;
+
+    for key in legal_keys.iter() {
+        if game_state.window.is_key_pressed(*key, KeyRepeat::Yes) {
+            any_key_pressed = true;
+            delegate_command(*key, &commands, game_state, sink);
+        }
+    }
+
+    any_key_pressed
+}
+
+fn delegate_command(key: Key, commands: &InputLogicMap, game_state: &mut GameState, sink: &mut Sink) {
+    if let Some(command) = commands.get(&key) {
+        command.execute(game_state, sink);
+    } else {
+        println!("No command associated with key: {:?}", key);
+    }
+}
+
+pub trait InputLogic {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink);
 }
 
 pub struct MoveLeft;
-impl Command for MoveLeft {
+impl InputLogic for MoveLeft {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         let (obstacle_left, _id) = check_collision(game_state.all_maps[game_state.current_map_index].obstacles, &game_state.sprites, &game_state.player, true);
 
@@ -59,7 +80,7 @@ impl Command for MoveLeft {
 
 pub struct MoveRight;
 
-impl Command for MoveRight {
+impl InputLogic for MoveRight {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         let (obstacle_right, _id) = check_collision(game_state.all_maps[game_state.current_map_index].obstacles, &game_state.sprites, &game_state.player, false);
 
@@ -159,7 +180,7 @@ pub fn check_collision(obstacles: &Vec<Obstacle>, sprites: &Sprites, player: &Pl
 
 pub struct Jump;
 
-impl Command for Jump {
+impl InputLogic for Jump {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
 
         if !game_state.player.is_jumping && (game_state.player.on_ground || game_state.player.on_obstacle) {
@@ -185,7 +206,7 @@ impl Command for Jump {
 
 pub struct Kick;
 
-impl Command for Kick {
+impl InputLogic for Kick {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         game_state.player.is_kicking = true;
         game_state.player.kick_frame = 0;
@@ -230,16 +251,15 @@ impl Command for Kick {
     }
 }
 
-pub type CommandMap = HashMap<Key, Arc<dyn Command>>;
+pub type InputLogicMap = HashMap<Key, Arc<dyn InputLogic>>;
 
-pub fn initialize_command_map() -> CommandMap {
-    let mut commands: CommandMap = HashMap::new();
+pub fn initialize_input_logic_map() -> InputLogicMap {
+    let mut logic_map: InputLogicMap = HashMap::new();
 
-    commands.insert(Key::A, Arc::new(MoveLeft));
-    commands.insert(Key::D, Arc::new(MoveRight));
-    commands.insert(Key::Space, Arc::new(Jump));
-    commands.insert(Key::X, Arc::new(Kick));
+    logic_map.insert(Key::A, Arc::new(MoveLeft));
+    logic_map.insert(Key::D, Arc::new(MoveRight));
+    logic_map.insert(Key::Space, Arc::new(Jump));
+    logic_map.insert(Key::X, Arc::new(Kick));
 
-    commands
+    logic_map
 }
-

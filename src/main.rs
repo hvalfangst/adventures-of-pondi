@@ -7,16 +7,16 @@ use minifb::{Window, WindowOptions};
 use winit::event_loop::EventLoop;
 use winit::monitor::MonitorHandle;
 
-use crate::graphics::constants::{SCALED_WINDOW_HEIGHT, SCALED_WINDOW_WIDTH};
-use crate::state::command::initialize_command_map;
-use crate::state::global_command::initialize_global_command_map;
 use crate::state::player::Player;
 use crate::state::{GameState, Map, Obstacle, ObstacleId, Viewport};
 use crate::{
     graphics::sprites::Sprites,
-    state::event_loop::start_event_loop
+    state::event_loop::start_event_loop,
+    state::input_logic::initialize_input_logic_map,
+    state::core_logic::initialize_core_logic_map,
 };
 use rodio::{OutputStream, Sink};
+use crate::graphics::{SCALED_WINDOW_HEIGHT, SCALED_WINDOW_WIDTH};
 
 mod state;mod graphics;
 
@@ -29,11 +29,11 @@ fn main() {
 
     let sprites = Sprites::new();
     let mut player = Player::new(1.0, 176.0);
-    let commands = initialize_command_map();
-    let global_commands = initialize_global_command_map();
+    let input_logic = initialize_input_logic_map();
+    let core_logic = initialize_core_logic_map();
 
     let (mut map_one_tiles, map_one_width, map_one_height) = read_grid_from_file("map_one.txt").expect("Failed to read grid from file");
-    let (mut map_two_tiles, map_two_width, map_two_height) = read_grid_from_file("map_two.txt").expect("Failed to read grid from file");
+    let (mut map_two_tiles, _map_two_width, _map_two_height) = read_grid_from_file("map_two.txt").expect("Failed to read grid from file");
     let (mut map_three_tiles, map_two_width, map_two_height) = read_grid_from_file("map_three.txt").expect("Failed to read grid from file");
     let mut map_one_obstacles = extract_obstacles(&map_one_tiles, false);
     let mut map_two_obstacles = extract_obstacles(&map_two_tiles, false);
@@ -124,7 +124,7 @@ fn main() {
         sounds
     };
 
-    start_event_loop(game_state, commands, global_commands, &mut sink);
+    start_event_loop(game_state, input_logic, core_logic, &mut sink);
 }
 
 fn load_sound(path: &str) -> Vec<u8> {

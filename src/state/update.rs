@@ -2,7 +2,7 @@ use crate::graphics::sprites::draw_sprite;
 use crate::state::Direction::{Left, Right};
 use crate::state::*;
 
-pub fn update(game_state: &mut GameState) {
+pub fn update_pixel_buffer(game_state: &mut GameState) {
     draw_game_world(game_state);
     draw_player(game_state)
 }

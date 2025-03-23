@@ -1,7 +1,7 @@
 
 use crate::state::GameState;
 
-pub fn render(game_state: &mut GameState) {
+pub fn render_pixel_buffer(game_state: &mut GameState) {
     // Scale the buffer to the screen resolution
     scale_buffer(&game_state.window_buffer, &mut game_state.scaled_buffer, game_state.all_maps[game_state.current_map_index].width, game_state.all_maps[game_state.current_map_index].height, game_state.window_width, game_state.window_height);
 

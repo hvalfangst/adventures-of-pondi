@@ -3,18 +3,31 @@ use std::collections::HashMap;
 use std::io::{BufReader, Cursor};
 use std::rc::Rc;
 use std::thread::sleep;
+use crate::state::{apply_friction, jump_obstacles, Direction, GameState, DOWN_SOUND, GRAVITY, GROUND, LOWER_BOUND, UPPER_BOUND};
 use rodio::{Sink, Source};
-use crate::graphics::renderer::render;
-use crate::state::{GameState, Direction, GRAVITY, GROUND, jump_obstacles, LOWER_BOUND, Obstacle, UPPER_BOUND, DOWN_SOUND};
+use crate::graphics::renderer::render_pixel_buffer;
 use crate::state::player::Player;
-use crate::state::update::update;
-pub trait GlobalCommand {
+use crate::state::update::update_pixel_buffer;
+
+
+pub fn execute_core_logic(game_state: &mut GameState, global_commands: &HashMap<String, Rc<RefCell<dyn CoreLogic>>>, sink: &mut Sink, any_key_pressed: bool) {
+    for (_, global_command) in global_commands.iter() {
+        global_command.borrow().execute(game_state, sink);
+    }
+
+    if !any_key_pressed {
+        apply_friction(game_state);
+        sink.stop();
+    }
+}
+
+pub trait CoreLogic {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink);
 }
 
 pub struct ApplyGravity;
 
-impl GlobalCommand for ApplyGravity {
+impl CoreLogic for ApplyGravity {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         // Apply gravity to the player
         if !game_state.player.on_ground && !game_state.player.on_obstacle {
@@ -58,7 +71,7 @@ impl GlobalCommand for ApplyGravity {
 
 pub struct JumpingObstacles;
 
-impl GlobalCommand for JumpingObstacles {
+impl CoreLogic for JumpingObstacles {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         jump_obstacles(game_state, sink);
     }
@@ -66,7 +79,7 @@ impl GlobalCommand for JumpingObstacles {
 
 pub struct VerticalBounds;
 
-impl GlobalCommand for VerticalBounds {
+impl CoreLogic for VerticalBounds {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         // Prevent the player from moving out vertical (y) bounds
         if game_state.player.y <= 40.0 {
@@ -78,7 +91,7 @@ impl GlobalCommand for VerticalBounds {
 
 pub struct HorizontalBounds;
 
-impl GlobalCommand for HorizontalBounds {
+impl CoreLogic for HorizontalBounds {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         // Prevent the player from moving out horizontal (x) bounds
         if game_state.player.x < LOWER_BOUND {
@@ -94,14 +107,14 @@ impl GlobalCommand for HorizontalBounds {
 
 pub struct CheckGameOver;
 
-impl GlobalCommand for CheckGameOver {
+impl CoreLogic for CheckGameOver {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         if game_state.player.game_over {
             println!("Game Over!");
 
             for _ in 0..4 {
-                update(game_state);
-                render(game_state);
+                update_pixel_buffer(game_state);
+                render_pixel_buffer(game_state);
                 game_state.game_over_index += 1;
                 sleep(std::time::Duration::from_millis(200));
             }
@@ -114,7 +127,7 @@ impl GlobalCommand for CheckGameOver {
 
 pub struct ApplyFriction;
 
-impl GlobalCommand for ApplyFriction {
+impl CoreLogic for ApplyFriction {
     fn execute(&self, game_state: &mut GameState, sink: &mut Sink) {
         if game_state.player.direction == Direction::Left {
             game_state.player.x -= game_state.player.vx;
@@ -125,16 +138,14 @@ impl GlobalCommand for ApplyFriction {
     }
 }
 
-pub fn initialize_global_command_map() -> HashMap<String, Rc<RefCell<dyn GlobalCommand>>> {
-    let mut global_commands: HashMap<String, Rc<RefCell<dyn GlobalCommand>>> = HashMap::new();
-    global_commands.insert("JumpingObstacles".to_string(), Rc::new(RefCell::new(JumpingObstacles)));
-    global_commands.insert("ApplyGravity".to_string(), Rc::new(RefCell::new(ApplyGravity)));
-    global_commands.insert("VerticalBounds".to_string(), Rc::new(RefCell::new(VerticalBounds)));
-    global_commands.insert("HorizontalBounds".to_string(), Rc::new(RefCell::new(HorizontalBounds)));
-    global_commands.insert("CheckGameOver".to_string(), Rc::new(RefCell::new(CheckGameOver)));
-    global_commands.insert("ApplyFriction".to_string(), Rc::new(RefCell::new(ApplyFriction)));
+pub fn initialize_core_logic_map() -> HashMap<String, Rc<RefCell<dyn CoreLogic>>> {
+    let mut logic_map: HashMap<String, Rc<RefCell<dyn CoreLogic>>> = HashMap::new();
+    logic_map.insert("JumpingObstacles".to_string(), Rc::new(RefCell::new(JumpingObstacles)));
+    logic_map.insert("ApplyGravity".to_string(), Rc::new(RefCell::new(ApplyGravity)));
+    logic_map.insert("VerticalBounds".to_string(), Rc::new(RefCell::new(VerticalBounds)));
+    logic_map.insert("HorizontalBounds".to_string(), Rc::new(RefCell::new(HorizontalBounds)));
+    logic_map.insert("CheckGameOver".to_string(), Rc::new(RefCell::new(CheckGameOver)));
+    logic_map.insert("ApplyFriction".to_string(), Rc::new(RefCell::new(ApplyFriction)));
 
-
-
-    global_commands
+    logic_map
 }

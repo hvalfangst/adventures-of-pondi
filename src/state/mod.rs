@@ -1,20 +1,17 @@
-use std::fs::File;
 use std::io::{BufReader, Cursor};
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use minifb::{Key, Window};
-use rodio::Source;
 use crate::graphics::sprites::Sprites;
 use crate::state::player::{Player, PlayerState};
-use crate::{sort_obstacles_by_y, Tile};
+use crate::Tile;
+use minifb::Window;
+use rodio::Source;
 
 pub mod event_loop;
 pub mod update;
-pub mod command;
-pub mod global_command;
 pub mod player;
-mod input_handler;
+pub(crate) mod input_logic;
+pub(crate) mod core_logic;
 
 const FRAME_DURATION: Duration = Duration::from_nanos(16666667); // 16.6666667 ms = 60 FPS
 const BACKGROUND_CHANGE_INTERVAL: Duration = Duration::from_secs(1);
